@@ -244,6 +244,7 @@
         let isSelecting = false;
         let dragStartPositions = new Map();
         let mouseStart = { x: 0, y: 0 };
+        let clipboard = [];
 
 
         const componentIcons = {
@@ -855,8 +856,8 @@
             activeComponentId = null;
             
             if (createDefault) {
-                const host = createComponent('host', 50, 50);
-                const rootport = createComponent('rootport', 250, 50);
+                const host = createComponent('host', 250, 50);
+                const rootport = createComponent('rootport', 250, 250);
                 connections.push({
                     source: { componentId: host.id, portId: 'out-0' },
                     target: { componentId: rootport.id, portId: 'in-0' }
@@ -1187,8 +1188,7 @@
                 if (parentComp.type === 'host') {
                     parentBus = parentComp.qemuId;
                 } else if (parentComp.type === 'switch') {
-                    const portIndex = parseInt(parentInfo.parentPortId.split('-')[1]);
-                    parentBus = `${parentComp.upstreamQemuId}`;
+                    parentBus = parentComp.upstreamQemuId;
                 } else if (parentComp.type === 'rootport') {
                     parentBus = parentComp.qemuId;
                 }
@@ -1319,4 +1319,3 @@
     </script>
 </body>
 </html>
-
