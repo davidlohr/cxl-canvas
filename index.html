@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CXL Topology Builder for QEMU</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .cxl-component {
+            position: absolute;
+            cursor: grab;
+            user-select: none;
+            width: 144px; /* 36 * 4 */
+            height: 144px; /* 36 * 4 */
+            transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .cxl-component.selected {
+            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.4);
+            border-color: #4f46e5;
+        }
+        .cxl-component:active {
+            cursor: grabbing;
+            z-index: 20;
+        }
+        .port {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #6366f1;
+            background-color: white;
+            border-radius: 50%;
+            cursor: crosshair;
+            transition: all 0.2s ease;
+            z-index: 15;
+        }
+        .port:hover, .port.selected-port {
+            background-color: #4338ca;
+            border-color: #4338ca;
+            transform: scale(1.2);
+        }
+        .port.upstream {
+            top: -8px;
+            left: calc(50% - 8px);
+        }
+        .port.downstream {
+            bottom: -8px;
+            left: calc(50% - 8px);
+        }
+        #canvas {
+            background-color: #f8fafc;
+            background-image: radial-gradient(#e2e8f0 1px, transparent 0);
+            background-size: 20px 20px;
+        }
+        .component-icon {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 8px;
+        }
+        .component-label {
+            font-weight: 600;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+        .component-sublabel {
+            font-size: 12px;
+            color: #64748b;
+        }
+        #selection-box {
+            position: absolute;
+            border: 1px solid #4f46e5;
+            background-color: rgba(79, 70, 229, 0.1);
+            z-index: 100;
+            pointer-events: none;
+        }
+        .sidebar {
+            transition: width 0.3s ease-in-out, padding 0.3s ease-in-out, opacity 0.3s ease-in-out;
+        }
+        .sidebar.collapsed {
+            width: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            opacity: 0;
+            overflow: hidden;
+        }
+        .sidebar-toggle {
+             background-color: #fff;
+             border: 1px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex flex-col h-screen">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm p-4 z-30 flex-shrink-0 border-b border-slate-200">
+        <h1 class="text-xl font-bold text-slate-900">CXL Topology Builder for QEMU</h1>
+        <p class="text-sm text-slate-500">Visually design CXL hierarchies and generate QEMU commands.</p>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex flex-grow overflow-hidden">
+        <!-- Toolbar -->
+        <aside id="toolbar-aside" class="sidebar w-64 bg-white p-4 border-r border-slate-200 shrink-0">
+            <div class="space-y-4">
+                <h2 class="text-lg font-semibold text-slate-800">Components</h2>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="add-window" class="flex flex-col items-center justify-center p-2 space-y-1 rounded-lg bg-slate-50 hover:bg-yellow-100 text-slate-700 hover:text-yellow-700 transition-colors duration-200 border border-slate-200 hover:border-yellow-300">
+                        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line><line x1="12" y1="3" x2="12" y2="21"></line></svg>
+                        <span class="text-xs font-medium">Memory Window</span>
+                    </button>
+                    <button id="add-host" class="flex flex-col items-center justify-center p-2 space-y-1 rounded-lg bg-slate-50 hover:bg-indigo-100 text-slate-700 hover:text-indigo-700 transition-colors duration-200 border border-slate-200 hover:border-indigo-300">
+                        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line></svg>
+                        <span class="text-xs font-medium">Host Bridge</span>
+                    </button>
+                    <button id="add-switch" class="flex flex-col items-center justify-center p-2 space-y-1 rounded-lg bg-slate-50 hover:bg-sky-100 text-slate-700 hover:text-sky-700 transition-colors duration-200 border border-slate-200 hover:border-sky-300">
+                        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"></path><path d="M12 10v4"></path><path d="M12 18v4"></path><path d="M12 6h8v4h-8z"></path><path d="M12 14h-8v4h8z"></path></svg>
+                        <span class="text-xs font-medium">Switch</span>
+                    </button>
+                    <button id="add-rootport" class="flex flex-col items-center justify-center p-2 space-y-1 rounded-lg bg-slate-50 hover:bg-purple-100 text-slate-700 hover:text-purple-700 transition-colors duration-200 border border-slate-200 hover:border-purple-300">
+                        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="14" width="18" height="6" rx="2"></rect><line x1="8" y1="14" x2="8" y2="10"></line><line x1="16" y1="14" x2="16" y2="10"></line></svg>
+                        <span class="text-xs font-medium">Root Port</span>
+                    </button>
+                    <button id="add-device-t2" class="flex flex-col items-center justify-center p-2 space-y-1 rounded-lg bg-slate-50 hover:bg-orange-100 text-slate-700 hover:text-orange-700 transition-colors duration-200 border border-slate-200 hover:border-orange-300">
+                       <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="6" y1="8" x2="6" y2="16"></line><line x1="10" y1="8" x2="10" y2="16"></line><rect x="14" y="8" width="4" height="4" rx="1"></rect></svg>
+                        <span class="text-xs font-medium">Type2 Device</span>
+                    </button>
+                    <button id="add-device" class="flex flex-col items-center justify-center p-2 space-y-1 rounded-lg bg-slate-50 hover:bg-emerald-100 text-slate-700 hover:text-emerald-700 transition-colors duration-200 border border-slate-200 hover:border-emerald-300">
+                       <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="6" y1="9" x2="6" y2="15"></line><line x1="10" y1="9" x2="10" y2="15"></line><line x1="14" y1="9" x2="14" y2="15"></line><line x1="18" y1="9" x2="18" y2="15"></line></svg>
+                        <span class="text-xs font-medium">Type3 Device</span>
+                    </button>
+                </div>
+                 <div class="pt-4 border-t space-y-2">
+                    <button id="generate-random" class="w-full bg-blue-600 text-white text-sm font-medium py-1 px-3 rounded-lg shadow-sm hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span>Random Topology</span>
+                    </button>
+                    <button id="reset-canvas" class="w-full bg-red-600 text-white text-sm font-medium py-1 px-3 rounded-lg shadow-sm hover:bg-red-700 transition-colors duration-200 flex items-center justify-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        <span>Reset Canvas</span>
+                    </button>
+                     <button id="save-image" class="w-full bg-green-600 text-white text-sm font-medium py-1 px-3 rounded-lg shadow-sm hover:bg-green-700 transition-colors duration-200 flex items-center justify-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        <span>Save Image</span>
+                    </button>
+                </div>
+                <div class="pt-4 text-xs text-slate-500">
+                    <h3 class="font-semibold mb-2">Instructions:</h3>
+                    <ol class="list-decimal list-inside space-y-1">
+                        <li>Add components to the canvas.</li>
+                        <li>Drag on canvas to select multiple components.</li>
+                        <li>Click a component to edit its properties.</li>
+                        <li>Connect components via their ports.</li>
+                        <li>Click a connected port to disconnect.</li>
+                        <li>Press 'Delete' key to remove selected component(s).</li>
+                    </ol>
+                </div>
+            </div>
+        </aside>
+
+        <div class="flex-shrink-0 flex items-center justify-center bg-slate-100">
+            <button id="toggle-toolbar-btn" class="sidebar-toggle rounded-full p-1 text-slate-400 hover:text-indigo-600">
+                <svg class="w-5 h-5 transition-transform transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
+            </button>
+        </div>
+
+        <!-- Canvas -->
+        <main id="canvas-container" class="flex-grow p-4 overflow-auto bg-slate-200">
+            <div id="canvas" class="relative rounded-lg shadow-inner">
+                <svg id="connections-svg" class="absolute top-0 left-0" style="pointer-events: none; z-index: 5;"></svg>
+                 <div id="selection-box" class="hidden"></div>
+            </div>
+        </main>
+        
+        <div class="flex-shrink-0 flex items-center justify-center bg-slate-100">
+            <button id="toggle-properties-btn" class="sidebar-toggle rounded-full p-1 text-slate-400 hover:text-indigo-600">
+                <svg class="w-5 h-5 transition-transform transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
+            </button>
+        </div>
+
+        <!-- Properties Panel -->
+        <aside id="properties-panel" class="sidebar w-80 bg-white p-4 border-l border-slate-200 overflow-y-auto shrink-0">
+            <div id="properties-content" class="h-full">
+                <h2 class="text-lg font-semibold text-slate-900 border-b pb-2">Properties</h2>
+                <p class="text-sm text-slate-500 mt-4">Select a component to view and edit its properties.</p>
+            </div>
+        </aside>
+    </div>
+    
+    <!-- Output Section -->
+    <footer class="bg-gray-800 text-white p-4 z-30 shadow-inner flex-shrink-0">
+        <div class="max-w-full mx-auto">
+            <div id="command-header" class="flex justify-between items-center mb-2 cursor-pointer">
+                <label class="block text-sm font-medium text-gray-300 pointer-events-none">Generated QEMU Command:</label>
+                <button id="toggle-command-view" class="p-1 rounded-full hover:bg-gray-700">
+                    <svg id="toggle-command-icon" class="w-5 h-5 text-gray-400 transition-transform duration-300 transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+            </div>
+            <div id="command-wrapper" class="overflow-y-auto transition-all duration-500 ease-in-out">
+                <div class="flex items-start space-x-2">
+                    <pre class="bg-gray-900 rounded-md p-3 w-full overflow-x-auto text-sm whitespace-pre"><code id="qemu-command">-machine q35,cxl=on ...</code></pre>
+                    <button id="copy-command" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 flex-shrink-0">Copy</button>
+                </div>
+            </div>
+        </div>
+        <div id="copy-feedback" class="text-green-400 text-sm mt-2 opacity-0 transition-opacity">Command copied to clipboard!</div>
+    </footer>
+
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM Element References ---
+        const canvas = document.getElementById('canvas');
+        const canvasContainer = document.getElementById('canvas-container');
+        const connectionsSvg = document.getElementById('connections-svg');
+        const qemuCommandOutput = document.getElementById('qemu-command');
+        const propertiesContent = document.getElementById('properties-content');
+        const selectionBox = document.getElementById('selection-box');
+        const commandHeader = document.getElementById('command-header');
+        const commandWrapper = document.getElementById('command-wrapper');
+        const toggleCommandIcon = document.getElementById('toggle-command-icon');
+        const toggleToolbarBtn = document.getElementById('toggle-toolbar-btn');
+        const toolbarAside = document.getElementById('toolbar-aside');
+        const togglePropertiesBtn = document.getElementById('toggle-properties-btn');
+        const propertiesPanel = document.getElementById('properties-panel');
+
+        // --- State Variables ---
+        let components = [];
+        let connections = [];
+        let idCounter = 0;
+        let selectedPort = null;
+        let activeComponentId = null; 
+        let selectedComponentIds = new Set();
+        let isDraggingComponent = false;
+        let isSelecting = false;
+        let dragStartPositions = new Map();
+        let mouseStart = { x: 0, y: 0 };
+
+
+        const componentIcons = {
+            host: `<svg class="component-icon text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line></svg>`,
+            rootport: `<svg class="component-icon text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="14" width="18" height="6" rx="2"></rect><line x1="8" y1="14" x2="8" y2="10"></line><line x1="16" y1="14" x2="16" y2="10"></line></svg>`,
+            switch: `<svg class="component-icon text-sky-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"></path><path d="M12 10v4"></path><path d="M12 18v4"></path><path d="M12 6h8v4h-8z"></path><path d="M12 14h-8v4h8z"></path></svg>`,
+            device: `<svg class="component-icon text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="6" y1="9" x2="6" y2="15"></line><line x1="10" y1="9" x2="10" y2="15"></line><line x1="14" y1="9" x2="14" y2="15"></line><line x1="18" y1="9" x2="18" y2="15"></line></svg>`,
+            'device-t2': `<svg class="component-icon text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="6" y1="8" x2="6" y2="16"></line><line x1="10" y1="8" x2="10" y2="16"></line><rect x="14" y="8" width="4" height="4" rx="1"></rect></svg>`,
+            window: `<svg class="component-icon text-yellow-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line><line x1="12" y1="3" x2="12" y2="21"></line></svg>`
+        };
+
+        // --- All functions are declared here to prevent hoisting issues ---
+        
+        function generateRandomSN() {
+            // Generate a random 32-bit integer and format it as a hex string
+            const randomHex = Math.floor(Math.random() * 0xFFFFFFFF).toString(16).toUpperCase();
+            return `0x${randomHex.padStart(8, '0')}`;
+        }
+
+        function createComponent(type, x, y) {
+            const id = `comp-${idCounter++}`;
+            const componentData = { id, type, x, y, isDeletable: true };
+            
+            switch (type) {
+                case 'host':
+                    componentData.name = 'CXL Host Bridge';
+                    componentData.baseColor = 'indigo';
+                    componentData.qemuId = `cxl.${components.filter(c => c.type === 'host').length}`;
+                    componentData.bus_nr = 12 + components.filter(c => c.type === 'host').length;
+                    componentData.ports = [{ type: 'downstream', id: 'out-0' }];
+                    break;
+                case 'rootport':
+                    const rpCount = components.filter(c => c.type === 'rootport').length;
+                    componentData.name = 'CXL Root Port';
+                    componentData.baseColor = 'purple';
+                    componentData.qemuId = `rp-comp${rpCount}`;
+                    componentData.numDownstreamPorts = 2;
+                    componentData.chassis = rpCount;
+                    componentData.slot = 0;
+                    componentData.ports = [
+                        { type: 'upstream', id: 'in-0' },
+                        ...Array.from({ length: 2 }, (_, i) => ({ type: 'downstream', id: `out-${i}` }))
+                    ];
+                    break;
+                case 'switch':
+                    const switchCount = components.filter(c => c.type === 'switch').length;
+                    componentData.name = `CXL Switch`;
+                    componentData.baseColor = 'sky';
+                    componentData.qemuId = `sw${switchCount}`;
+                    componentData.upstreamQemuId = `us${switchCount}`;
+                    componentData.numDownstreamPorts = 4;
+                    componentData.chassis = 0;
+                    componentData.startSlot = 0;
+                    componentData.hasCCI = false;
+                    componentData.ports = [
+                        { type: 'upstream', id: 'in-0' },
+                        ...Array.from({ length: 4 }, (_, i) => ({ type: 'downstream', id: `out-${i}` }))
+                    ];
+                    break;
+                case 'device':
+                    const deviceCount = components.filter(c => c.type === 'device').length;
+                    componentData.name = 'CXL Type3 Device';
+                    componentData.baseColor = 'emerald';
+                    componentData.qemuId = `cxl-type3-dev-${deviceCount}`;
+                    componentData.memObjId = `mem${deviceCount}`;
+                    componentData.lsaObjId = `lsa-mem${deviceCount}`;
+                    componentData.size = '512M';
+                    componentData.memoryType = 'volatile';
+                    componentData.lsaSize = '16M';
+                    componentData.isDCD = false;
+                    componentData.sn = generateRandomSN();
+                    componentData.numDcRegions = 1;
+                    componentData.ports = [{ type: 'upstream', id: 'in-0' }];
+                    break;
+                 case 'device-t2':
+                    const accelCount = components.filter(c => c.type === 'device-t2').length;
+                    componentData.name = 'CXL Type2 Device';
+                    componentData.baseColor = 'orange';
+                    componentData.qemuId = `cxl-ac-dev-${accelCount}`;
+                    componentData.memObjId = `mem-ac-${accelCount}`;
+                    componentData.size = '256M';
+                    componentData.sn = generateRandomSN();
+                    componentData.ports = [{ type: 'upstream', id: 'in-0' }];
+                    break;
+                case 'window':
+                    componentData.name = 'CXL Memory Window';
+                    componentData.baseColor = 'yellow';
+                    componentData.qemuId = `cxl-window-${components.filter(c => c.type === 'window').length}`;
+                    componentData.size = '4G';
+                    componentData.hostBridgeIds = [];
+                    componentData.interleaveGranularity = '256';
+                    componentData.ports = [];
+                    break;
+            }
+            components.push(componentData);
+            return componentData;
+        }
+
+        function getConnectionLineId(conn) {
+            return `line-${conn.source.componentId}-${conn.source.portId}-${conn.target.componentId}-${conn.target.portId}`;
+        }
+        
+        function resizeCanvasToFitComponents() {
+            if (components.length === 0) {
+                canvas.style.width = '100%';
+                canvas.style.height = '100%';
+                connectionsSvg.style.width = '100%';
+                connectionsSvg.style.height = '100%';
+                return;
+            }
+
+            let maxX = 0;
+            let maxY = 0;
+            components.forEach(comp => {
+                maxX = Math.max(maxX, comp.x + 144);
+                maxY = Math.max(maxY, comp.y + 144);
+            });
+
+            const padding = 100;
+            const newWidth = Math.max(canvasContainer.clientWidth, maxX + padding);
+            const newHeight = Math.max(canvasContainer.clientHeight, maxY + padding);
+
+            canvas.style.width = `${newWidth}px`;
+            canvas.style.height = `${newHeight}px`;
+            connectionsSvg.style.width = `${newWidth}px`;
+            connectionsSvg.style.height = `${newHeight}px`;
+        }
+
+        function render() {
+            canvas.innerHTML = '';
+            canvas.appendChild(connectionsSvg);
+            canvas.appendChild(selectionBox);
+            connectionsSvg.innerHTML = '';
+            
+            components.forEach(comp => {
+                const el = document.createElement('div');
+                el.id = comp.id;
+                el.className = `cxl-component p-4 rounded-lg shadow-md border-2 bg-white border-slate-200`;
+                if (selectedComponentIds.has(comp.id)) {
+                    el.classList.add('selected', `border-${comp.baseColor}-500`);
+                }
+                el.style.left = `${comp.x}px`;
+                el.style.top = `${comp.y}px`;
+
+                let content = componentIcons[comp.type];
+                content += `<div class="component-label text-slate-800">${comp.name}</div>`;
+                if (comp.qemuId) {
+                    content += `<div class="component-sublabel">${comp.qemuId}</div>`;
+                }
+                 if(comp.type === 'device' || comp.type === 'device-t2') { 
+                     let typeLabel = comp.isDCD ? 'DCD' : comp.memoryType;
+                     content += `<div class="component-sublabel">${comp.size} ${comp.type === 'device-t2' ? '' : `(${typeLabel})`}</div>`;
+                } else if (comp.type === 'window') {
+                     content += `<div class="component-sublabel">${comp.size}</div>`;
+                } else if (comp.type === 'switch' && comp.hasCCI) {
+                     content += `<div class="component-sublabel">(CCI Enabled)</div>`;
+                }
+                el.innerHTML = content;
+                
+                comp.ports?.forEach((port) => {
+                    const portEl = document.createElement('div');
+                    portEl.className = `port ${port.type}`;
+                    portEl.dataset.componentId = comp.id;
+                    portEl.dataset.portId = port.id;
+
+                    if (port.type === 'downstream') {
+                        const downstreamPorts = comp.ports.filter(p => p.type === 'downstream');
+                        const portIndex = downstreamPorts.findIndex(p => p.id === port.id);
+                        if (downstreamPorts.length > 1) {
+                            portEl.style.left = `calc(${(100 / (downstreamPorts.length + 1)) * (portIndex + 1)}% - 8px)`;
+                        }
+                    }
+
+                    portEl.addEventListener('click', onPortClick);
+                    el.appendChild(portEl);
+                });
+                
+                el.addEventListener('mousedown', onComponentMouseDown);
+                canvas.appendChild(el);
+            });
+
+            connections.forEach(conn => {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.id = getConnectionLineId(conn);
+                line.setAttribute('stroke', '#4f46e5');
+                line.setAttribute('stroke-width', '3');
+                connectionsSvg.appendChild(line);
+            });
+            
+            resizeCanvasToFitComponents();
+            requestAnimationFrame(renderConnections); // Defer to ensure layout is calculated
+            updateQemuCommand();
+            renderPropertiesPanel();
+        }
+
+        function renderConnections() {
+            const canvasRect = canvas.getBoundingClientRect();
+            connections.forEach(conn => {
+                const line = document.getElementById(getConnectionLineId(conn));
+                const sourceEl = document.querySelector(`.port[data-component-id="${conn.source.componentId}"][data-port-id="${conn.source.portId}"]`);
+                const targetEl = document.querySelector(`.port[data-component-id="${conn.target.componentId}"][data-port-id="${conn.target.portId}"]`);
+
+                if (line && sourceEl && targetEl) {
+                    const sourceRect = sourceEl.getBoundingClientRect();
+                    const targetRect = targetEl.getBoundingClientRect();
+                    
+                    const x1 = sourceRect.left - canvasRect.left + sourceRect.width / 2;
+                    const y1 = sourceRect.top - canvasRect.top + sourceRect.height / 2;
+                    const x2 = targetRect.left - canvasRect.left + targetRect.width / 2;
+                    const y2 = targetRect.top - canvasRect.top + targetRect.height / 2;
+
+                    line.setAttribute('x1', x1);
+                    line.setAttribute('y1', y1);
+                    line.setAttribute('x2', x2);
+                    line.setAttribute('y2', y2);
+                }
+            });
+        }
+
+        function renderPropertiesPanel() {
+            const comp = components.find(c => c.id === activeComponentId);
+            if (!comp || selectedComponentIds.size > 1) {
+                propertiesContent.innerHTML = `<h2 class="text-lg font-semibold text-slate-900 border-b pb-2">Properties</h2><p class="text-sm text-slate-500 mt-4">${selectedComponentIds.size > 1 ? `${selectedComponentIds.size} components selected.` : 'Select a component to view and edit its properties.'}</p>`;
+                if (selectedComponentIds.size > 0) {
+                     propertiesContent.innerHTML += `<div class="mt-6 pt-4 border-t space-y-2"><button id="delete-component" class="w-full bg-white text-red-600 border border-red-300 text-sm font-medium py-1 px-3 rounded-lg shadow-sm hover:bg-red-50">Delete Selected</button></div>`;
+                     document.getElementById('delete-component')?.addEventListener('click', deleteSelectedComponents);
+                }
+                return;
+            }
+
+            let propertiesHtml = `<h2 class="text-lg font-semibold text-slate-900 border-b pb-2">${comp.name}</h2><div class="space-y-4 mt-4">`;
+            if (comp.type === 'device') {
+                const isDCD = comp.isDCD;
+                const isPersistent = comp.memoryType === 'persistent';
+                propertiesHtml += `
+                    <div>
+                        <label for="prop-size" class="block text-sm font-medium text-gray-700">Size</label>
+                        <input type="text" id="prop-size" value="${comp.size}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                    <div class="relative flex items-start">
+                        <div class="flex h-5 items-center">
+                            <input id="prop-dcd" type="checkbox" ${isDCD ? 'checked' : ''} class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="prop-dcd" class="font-medium text-gray-700">Dynamic Capacity Device (DCD)</label>
+                        </div>
+                    </div>
+                     <div id="dc-regions-wrapper" class="${!isDCD ? 'hidden' : ''}">
+                        <label for="prop-dc-regions" class="block text-sm font-medium text-gray-700">DC Regions</label>
+                        <input type="number" id="prop-dc-regions" value="${comp.numDcRegions}" min="1" max="8" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="prop-mem-type" class="block text-sm font-medium ${isDCD ? 'text-gray-400' : 'text-gray-700'}">Memory Type</label>
+                        <select id="prop-mem-type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${isDCD ? 'bg-gray-50 cursor-not-allowed' : ''}" ${isDCD ? 'disabled' : ''}>
+                            <option value="volatile" ${comp.memoryType === 'volatile' ? 'selected' : ''}>Volatile</option>
+                            <option value="persistent" ${isPersistent ? 'selected' : ''}>Persistent</option>
+                        </select>
+                    </div>
+                    <div id="lsa-size-wrapper" class="${(isDCD || !isPersistent) ? 'hidden' : ''}">
+                        <label for="prop-lsa-size" class="block text-sm font-medium text-gray-700">LSA Size</label>
+                        <input type="text" id="prop-lsa-size" value="${comp.lsaSize}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                     <div>
+                        <label for="prop-sn" class="block text-sm font-medium text-gray-700">Serial Number (Hex)</label>
+                        <input type="text" id="prop-sn" value="${comp.sn}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                `;
+            } else if (comp.type === 'device-t2') {
+                propertiesHtml += `
+                    <div>
+                        <label for="prop-size" class="block text-sm font-medium text-gray-700">Memory Size</label>
+                        <input type="text" id="prop-size" value="${comp.size}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="prop-sn" class="block text-sm font-medium text-gray-700">Serial Number (Hex)</label>
+                        <input type="text" id="prop-sn" value="${comp.sn}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                `;
+            } else if (comp.type === 'switch') {
+                propertiesHtml += `
+                    <div>
+                        <label for="prop-ports" class="block text-sm font-medium text-gray-700">Downstream Ports</label>
+                        <input type="number" id="prop-ports" value="${comp.numDownstreamPorts}" min="1" max="16" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="prop-chassis" class="block text-sm font-medium text-gray-700">Chassis</label>
+                        <input type="number" id="prop-chassis" value="${comp.chassis}" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="prop-start-slot" class="block text-sm font-medium text-gray-700">Starting Slot</label>
+                        <input type="number" id="prop-start-slot" value="${comp.startSlot}" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                     <div class="relative flex items-start">
+                        <div class="flex h-5 items-center">
+                            <input id="prop-cci" type="checkbox" ${comp.hasCCI ? 'checked' : ''} class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="prop-cci" class="font-medium text-gray-700">Enable CCI Mailbox</label>
+                        </div>
+                    </div>
+                `;
+            } else if (comp.type === 'rootport') {
+                 propertiesHtml += `
+                    <div>
+                        <label for="prop-rp-ports" class="block text-sm font-medium text-gray-700">Downstream Ports</label>
+                        <input type="number" id="prop-rp-ports" value="${comp.numDownstreamPorts}" min="1" max="16" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="prop-chassis" class="block text-sm font-medium text-gray-700">Chassis</label>
+                        <input type="number" id="prop-chassis" value="${comp.chassis}" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="prop-slot" class="block text-sm font-medium text-gray-700">Slot</label>
+                        <input type="number" id="prop-slot" value="${comp.slot}" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                `;
+            } else if (comp.type === 'window') {
+                const granularities = { "256": "256 Bytes", "512": "512 Bytes", "1k": "1 KB", "2k": "2 KB", "4k": "4 KB", "8k": "8 KB", "16k": "16 KB" };
+                let granularityOptions = '';
+                for(const [value, label] of Object.entries(granularities)) {
+                    granularityOptions += `<option value="${value}" ${comp.interleaveGranularity === value ? 'selected' : ''}>${label}</option>`;
+                }
+
+                propertiesHtml += `<div><label for="prop-size" class="block text-sm font-medium text-gray-700">Window Size</label><input type="text" id="prop-size" value="${comp.size}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></div>`;
+                
+                propertiesHtml += `<div>
+                        <label for="prop-granularity" class="block text-sm font-medium text-gray-700">Interleave Granularity</label>
+                        <select id="prop-granularity" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">${granularityOptions}</select>
+                    </div>`;
+
+                propertiesHtml += `<div><label class="block text-sm font-medium text-gray-700">Associated Host Bridges</label><div id="host-checkboxes" class="mt-2 space-y-2">${components.filter(c => c.type === 'host').map(h => `<div class="flex items-center"><input id="host-check-${h.id}" data-host-id="${h.id}" type="checkbox" ${comp.hostBridgeIds.includes(h.id) ? 'checked' : ''} class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"><label for="host-check-${h.id}" class="ml-2 block text-sm text-gray-900">${h.name} (${h.qemuId})</label></div>`).join('') || '<p class="text-xs text-slate-500">No host bridges on canvas.</p>'}</div></div>`;
+            } else if(comp.type === 'host'){
+                 propertiesHtml += `
+                    <div>
+                        <label for="prop-bus_nr" class="block text-sm font-medium text-gray-700">Bus Number</label>
+                        <input type="number" id="prop-bus_nr" value="${comp.bus_nr}" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                `;
+            }
+            else {
+                propertiesHtml += `<p class="text-sm text-slate-500">No editable properties for this component.</p>`;
+            }
+            propertiesHtml += `</div><div class="mt-6 pt-4 border-t space-y-2"><button id="update-component" class="w-full bg-indigo-600 text-white text-sm font-medium py-1 px-3 rounded-lg shadow-sm hover:bg-indigo-700">Update</button>`;
+            if (comp.isDeletable) {
+                propertiesHtml += `<button id="delete-component" class="w-full bg-white text-red-600 border border-red-300 text-sm font-medium py-1 px-3 rounded-lg shadow-sm hover:bg-red-50">Delete Component</button>`;
+            }
+            propertiesHtml += `</div>`;
+            
+            propertiesContent.innerHTML = propertiesHtml;
+            document.getElementById('update-component')?.addEventListener('click', updateComponent);
+            document.getElementById('delete-component')?.addEventListener('click', deleteSelectedComponents);
+            
+            const dcdCheckbox = document.getElementById('prop-dcd');
+            const memTypeSelect = document.getElementById('prop-mem-type');
+            if (dcdCheckbox) {
+                const lsaWrapper = document.getElementById('lsa-size-wrapper');
+                const dcRegionsWrapper = document.getElementById('dc-regions-wrapper');
+                const updateDeviceOptions = (event) => {
+                    const changedElement = event.currentTarget;
+
+                    if (changedElement.id === 'prop-dcd') {
+                        // If DCD checkbox changed
+                        if (dcdCheckbox.checked) {
+                            memTypeSelect.value = 'volatile';
+                            memTypeSelect.disabled = true;
+                        } else {
+                            memTypeSelect.disabled = false;
+                        }
+                    } else { // memTypeSelect changed
+                        if (memTypeSelect.value === 'persistent') {
+                            dcdCheckbox.checked = false;
+                            dcdCheckbox.disabled = true;
+                        } else {
+                            dcdCheckbox.disabled = false;
+                        }
+                    }
+
+                    // Update UI based on the final state
+                    const isDCD = dcdCheckbox.checked;
+                    const isPersistent = memTypeSelect.value === 'persistent';
+                    
+                    memTypeSelect.classList.toggle('bg-gray-50', isDCD);
+                    memTypeSelect.classList.toggle('cursor-not-allowed', isDCD);
+                    memTypeSelect.previousElementSibling.classList.toggle('text-gray-400', isDCD);
+                    
+                    dcdCheckbox.classList.toggle('cursor-not-allowed', isPersistent);
+                    document.querySelector('label[for="prop-dcd"]').classList.toggle('text-gray-400', isPersistent);
+                    
+                    dcRegionsWrapper.classList.toggle('hidden', !isDCD);
+                    lsaWrapper.classList.toggle('hidden', isDCD || !isPersistent);
+                };
+
+                dcdCheckbox.addEventListener('change', updateDeviceOptions);
+                memTypeSelect.addEventListener('change', updateDeviceOptions);
+
+                // Initial UI state setup
+                if (comp.isDCD) {
+                     memTypeSelect.value = 'volatile';
+                     memTypeSelect.disabled = true;
+                } else if (comp.memoryType === 'persistent') {
+                     dcdCheckbox.disabled = true;
+                }
+                
+                // Manually trigger updates to set correct initial state for wrappers
+                const isDCD = dcdCheckbox.checked;
+                const isPersistent = memTypeSelect.value === 'persistent';
+                document.getElementById('dc-regions-wrapper').classList.toggle('hidden', !isDCD);
+                document.getElementById('lsa-size-wrapper').classList.toggle('hidden', isDCD || !isPersistent);
+                memTypeSelect.classList.toggle('bg-gray-50', isDCD);
+                memTypeSelect.classList.toggle('cursor-not-allowed', isDCD);
+                memTypeSelect.previousElementSibling.classList.toggle('text-gray-400', isDCD);
+                dcdCheckbox.classList.toggle('cursor-not-allowed', isPersistent);
+                document.querySelector('label[for="prop-dcd"]').classList.toggle('text-gray-400', isPersistent);
+
+            }
+        }
+        
+        function selectComponent(id, shiftKey = false) {
+            if (shiftKey) {
+                if (selectedComponentIds.has(id)) {
+                    selectedComponentIds.delete(id);
+                } else {
+                    selectedComponentIds.add(id);
+                }
+            } else {
+                selectedComponentIds.clear();
+                selectedComponentIds.add(id);
+            }
+            activeComponentId = id;
+
+            document.querySelectorAll('.cxl-component.selected').forEach(el => el.classList.remove('selected'));
+            selectedComponentIds.forEach(selectedId => {
+                const el = document.getElementById(selectedId);
+                if (el) el.classList.add('selected');
+            });
+            
+            renderPropertiesPanel();
+        }
+
+        function updateComponent() {
+            const comp = components.find(c => c.id === activeComponentId);
+            if (!comp) return;
+
+            if (comp.type === 'device') {
+                comp.size = document.getElementById('prop-size').value;
+                comp.isDCD = document.getElementById('prop-dcd').checked;
+                comp.sn = document.getElementById('prop-sn').value;
+                if(comp.isDCD) {
+                     comp.numDcRegions = parseInt(document.getElementById('prop-dc-regions').value, 10);
+                }
+                if (!comp.isDCD) {
+                    comp.memoryType = document.getElementById('prop-mem-type').value;
+                    if (comp.memoryType === 'persistent') {
+                        comp.lsaSize = document.getElementById('prop-lsa-size').value;
+                    }
+                }
+            } else if (comp.type === 'device-t2') {
+                comp.size = document.getElementById('prop-size').value;
+                comp.sn = document.getElementById('prop-sn').value;
+            } else if (comp.type === 'window') {
+                comp.size = document.getElementById('prop-size').value;
+                comp.hostBridgeIds = Array.from(document.querySelectorAll('#host-checkboxes input:checked')).map(cb => cb.dataset.hostId);
+                comp.interleaveGranularity = document.getElementById('prop-granularity').value;
+            } else if (comp.type === 'rootport') {
+                const newPortCount = parseInt(document.getElementById('prop-rp-ports').value, 10);
+                comp.chassis = parseInt(document.getElementById('prop-chassis').value, 10);
+                comp.slot = parseInt(document.getElementById('prop-slot').value, 10);
+                if (!isNaN(newPortCount) && newPortCount > 0) {
+                    comp.numDownstreamPorts = newPortCount;
+                    comp.ports = [ { type: 'upstream', id: 'in-0' }, ...Array.from({ length: newPortCount }, (_, i) => ({ type: 'downstream', id: `out-${i}` })) ];
+                     connections = connections.filter(conn => {
+                        if(conn.source.componentId === comp.id) {
+                            const portIndex = parseInt(conn.source.portId.split('-')[1]);
+                            return portIndex < newPortCount;
+                        }
+                        return true;
+                    });
+                }
+            } else if (comp.type === 'switch') {
+                const newPortCount = parseInt(document.getElementById('prop-ports').value, 10);
+                comp.chassis = parseInt(document.getElementById('prop-chassis').value, 10);
+                comp.startSlot = parseInt(document.getElementById('prop-start-slot').value, 10);
+                comp.hasCCI = document.getElementById('prop-cci').checked;
+                if (!isNaN(newPortCount) && newPortCount > 0) {
+                    comp.numDownstreamPorts = newPortCount;
+                    comp.ports = [ { type: 'upstream', id: 'in-0' }, ...Array.from({ length: newPortCount }, (_, i) => ({ type: 'downstream', id: `out-${i}` })) ];
+                    connections = connections.filter(conn => {
+                        if(conn.source.componentId === comp.id) {
+                            const portIndex = parseInt(conn.source.portId.split('-')[1]);
+                            return portIndex < newPortCount;
+                        }
+                        return true;
+                    });
+                }
+            } 
+            else if (comp.type === 'host') {
+                comp.bus_nr = parseInt(document.getElementById('prop-bus_nr').value, 10);
+            }
+            render();
+        }
+
+        function deleteSelectedComponents() {
+            if (selectedComponentIds.size === 0) return;
+            
+            components = components.filter(c => !selectedComponentIds.has(c.id) || !c.isDeletable);
+            connections = connections.filter(c => !selectedComponentIds.has(c.source.componentId) && !selectedComponentIds.has(c.target.componentId));
+            
+            selectedComponentIds.clear();
+            activeComponentId = null;
+            render();
+        }
+        
+        function generateRandomTopology() {
+            resetCanvas(false);
+            
+            const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+            const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+            
+            const numHosts = rand(1, 2);
+            let allHosts = [];
+            for(let i=0; i<numHosts; i++) {
+                const host = createComponent('host', 0, 0);
+                allHosts.push(host);
+            }
+
+            let availableUpstream = [...allHosts];
+            let maxDepth = 3;
+            let currentDepth = 0;
+            let allCreatedComponents = [...allHosts];
+
+            while(availableUpstream.length > 0 && currentDepth < maxDepth) {
+                let nextAvailableUpstream = [];
+                for (const parent of availableUpstream) {
+                    const availablePorts = parent.ports.filter(p => p.type === 'downstream' && !connections.some(c => c.source.componentId === parent.id && c.source.portId === p.id));
+                    
+                    for (const port of availablePorts) {
+                        if (parent.type !== 'host' && Math.random() < 0.3) continue;
+
+                        let childType;
+                        const parentType = parent.type;
+
+                        if (parentType === 'host') childType = 'rootport';
+                        else if (parentType === 'rootport') childType = pick(['switch', 'device', 'device-t2']);
+                        else if (parentType === 'switch') childType = pick(['switch', 'device', 'device-t2']);
+                        
+                        if (currentDepth >= maxDepth - 1) childType = pick(['device', 'device-t2']);
+                        if (!childType) continue;
+
+                        const child = createComponent(childType, 0, 0);
+                        allCreatedComponents.push(child);
+                        
+                        // Randomize properties
+                        if (child.type === 'device') {
+                            child.size = pick(['256M', '512M', '1G', '2G']);
+                            child.isDCD = Math.random() < 0.2;
+                            if(!child.isDCD) {
+                                child.memoryType = pick(['volatile', 'persistent']);
+                                if (child.memoryType === 'persistent') {
+                                    child.lsaSize = pick(['8M', '16M']);
+                                }
+                            }
+                        } else if (child.type === 'device-t2') {
+                             child.size = pick(['256M', '512M']);
+                        } else if (child.type === 'switch') {
+                            child.numDownstreamPorts = rand(2, 4);
+                            child.ports = [ { type: 'upstream', id: 'in-0' }, ...Array.from({ length: child.numDownstreamPorts }, (_, i) => ({ type: 'downstream', id: `out-${i}` })) ];
+                            child.hasCCI = Math.random() < 0.4;
+                        } else if (child.type === 'rootport') {
+                            child.numDownstreamPorts = rand(1, 4);
+                            child.ports = [ { type: 'upstream', id: 'in-0' }, ...Array.from({ length: child.numDownstreamPorts }, (_, i) => ({ type: 'downstream', id: `out-${i}` })) ];
+                        }
+                        
+                        connections.push({
+                            source: { componentId: parent.id, portId: port.id },
+                            target: { componentId: child.id, portId: 'in-0' }
+                        });
+
+                        if (['switch', 'rootport'].includes(child.type)) {
+                            nextAvailableUpstream.push(child);
+                        }
+                    }
+                }
+                availableUpstream = nextAvailableUpstream;
+                currentDepth++;
+            }
+
+            const connectableComponents = allCreatedComponents.filter(c => c.type === 'switch' || c.type === 'rootport');
+            for (const parent of connectableComponents) {
+                 const availablePorts = parent.ports.filter(p => p.type === 'downstream' && !connections.some(c => c.source.componentId === parent.id && c.source.portId === p.id));
+                 for (const port of availablePorts) {
+                     const child = createComponent('device', 0, 0);
+                     child.size = pick(['256M', '512M', '1G', '2G']);
+                     connections.push({
+                        source: { componentId: parent.id, portId: port.id },
+                        target: { componentId: child.id, portId: 'in-0' }
+                     });
+                 }
+            }
+            
+            autoLayout();
+            render();
+        }
+
+        function resetCanvas(createDefault = true) {
+            components = [];
+            connections = [];
+            idCounter = 0; 
+            selectedComponentIds.clear();
+            activeComponentId = null;
+            
+            if (createDefault) {
+                const host = createComponent('host', 50, 50);
+                const rootport = createComponent('rootport', 250, 50);
+                connections.push({
+                    source: { componentId: host.id, portId: 'out-0' },
+                    target: { componentId: rootport.id, portId: 'in-0' }
+                });
+                selectComponent(host.id);
+            }
+            render();
+        }
+
+        function autoLayout() {
+            const V_SPACING = 200;
+            const H_SPACING = 200;
+            const PADDING = 50;
+
+            const levels = new Map();
+            const visited = new Set();
+            let queue = [];
+
+            const hosts = components.filter(c => c.type === 'host');
+            hosts.forEach(host => {
+                queue.push({ id: host.id, level: 0 });
+                visited.add(host.id);
+            });
+            
+            while (queue.length > 0) {
+                const { id, level } = queue.shift();
+                if (!levels.has(level)) {
+                    levels.set(level, []);
+                }
+                levels.get(level).push(id);
+                
+                connections.filter(c => c.source.componentId === id).forEach(conn => {
+                    if (!visited.has(conn.target.componentId)) {
+                        visited.add(conn.target.componentId);
+                        queue.push({ id: conn.target.componentId, level: level + 1 });
+                    }
+                });
+            }
+
+            levels.forEach((levelComps, level) => {
+                const levelWidth = levelComps.length * H_SPACING;
+                const startX = (canvasContainer.clientWidth / 2) - (levelWidth / 2) + (H_SPACING / 2) - 72;
+
+                levelComps.forEach((compId, index) => {
+                    const comp = components.find(c => c.id === compId);
+                    if (comp) {
+                        comp.x = startX + index * H_SPACING;
+                        comp.y = PADDING + level * V_SPACING;
+                    }
+                });
+            }
+            );
+
+            const unconnected = components.filter(c => !visited.has(c.id) && c.type !== 'window');
+            unconnected.forEach((comp, index) => {
+                comp.x = canvasContainer.clientWidth - 200;
+                comp.y = PADDING + index * V_SPACING;
+            });
+        }
+
+        function onCanvasMouseDown(e) {
+             if (e.target !== canvas) return;
+             isSelecting = true;
+             
+             mouseStart.x = e.clientX - canvas.getBoundingClientRect().left;
+             mouseStart.y = e.clientY - canvas.getBoundingClientRect().top;
+
+             selectionBox.style.left = `${mouseStart.x}px`;
+             selectionBox.style.top = `${mouseStart.y}px`;
+             selectionBox.style.width = '0px';
+             selectionBox.style.height = '0px';
+             selectionBox.classList.remove('hidden');
+
+             document.addEventListener('mousemove', onCanvasMouseMove);
+             document.addEventListener('mouseup', onCanvasMouseUp);
+        }
+
+        function onCanvasMouseMove(e) {
+            if (!isSelecting) return;
+
+            const canvasRect = canvas.getBoundingClientRect();
+            const currentX = e.clientX - canvasRect.left;
+            const currentY = e.clientY - canvasRect.top;
+
+            const left = Math.min(mouseStart.x, currentX);
+            const top = Math.min(mouseStart.y, currentY);
+            const width = Math.abs(mouseStart.x - currentX);
+            const height = Math.abs(mouseStart.y - currentY);
+
+            selectionBox.style.left = `${left}px`;
+            selectionBox.style.top = `${top}px`;
+            selectionBox.style.width = `${width}px`;
+            selectionBox.style.height = `${height}px`;
+
+            const selectionRect = { left, top, right: left + width, bottom: top + height };
+            
+            selectedComponentIds.clear();
+            components.forEach(comp => {
+                const compRect = { left: comp.x, top: comp.y, right: comp.x + 144, bottom: comp.y + 144 };
+                if (comp.isDeletable && compRect.right >= selectionRect.left && compRect.left <= selectionRect.right && compRect.bottom >= selectionRect.top && compRect.top <= selectionRect.bottom) {
+                    selectedComponentIds.add(comp.id);
+                }
+            });
+
+            document.querySelectorAll('.cxl-component.selected').forEach(el => el.classList.remove('selected'));
+            selectedComponentIds.forEach(id => {
+                 const el = document.getElementById(id);
+                 if(el) el.classList.add('selected');
+            });
+        }
+        
+        function onCanvasMouseUp(e) {
+            isSelecting = false;
+            selectionBox.classList.add('hidden');
+            document.removeEventListener('mousemove', onCanvasMouseMove);
+            document.removeEventListener('mouseup', onCanvasMouseUp);
+            if (selectedComponentIds.size === 1) {
+                activeComponentId = selectedComponentIds.values().next().value;
+            } else {
+                activeComponentId = null;
+            }
+            renderPropertiesPanel();
+        }
+
+        function onComponentMouseDown (e) {
+            if (e.target.classList.contains('port')) return;
+            
+            isDraggingComponent = true;
+            const targetEl = e.currentTarget;
+            
+            if (!selectedComponentIds.has(targetEl.id)) {
+                selectComponent(targetEl.id, e.shiftKey);
+            }
+            activeComponentId = targetEl.id; // Set active for property panel
+            
+            dragStartPositions.clear();
+            mouseStart.x = e.clientX;
+            mouseStart.y = e.clientY;
+
+            selectedComponentIds.forEach(id => {
+                const comp = components.find(c => c.id === id);
+                if (comp) {
+                    dragStartPositions.set(id, { x: comp.x, y: comp.y });
+                }
+                const el = document.getElementById(id);
+                if (el) el.style.zIndex = "20";
+            });
+
+            document.addEventListener('mousemove', onComponentMouseMove);
+            document.addEventListener('mouseup', onComponentMouseUp);
+        };
+        
+        function onComponentMouseMove(e) {
+            if (!isDraggingComponent) return;
+
+            const dx = e.clientX - mouseStart.x;
+            const dy = e.clientY - mouseStart.y;
+
+            selectedComponentIds.forEach(id => {
+                const compData = components.find(c => c.id === id);
+                const startPos = dragStartPositions.get(id);
+                if (!compData || !startPos) return;
+
+                const newX = startPos.x + dx;
+                const newY = startPos.y + dy;
+                
+                compData.x = newX;
+                compData.y = newY;
+                
+                const el = document.getElementById(id);
+                if (el) {
+                    el.style.left = `${newX}px`;
+                    el.style.top = `${newY}px`;
+                }
+                renderConnections();
+            });
+        };
+        
+        function onComponentMouseUp() {
+            if (!isDraggingComponent) {
+                renderPropertiesPanel();
+            } else {
+                selectedComponentIds.forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) el.style.zIndex = "10";
+                });
+                updateQemuCommand(); 
+            }
+            
+            isDraggingComponent = false;
+            document.removeEventListener('mousemove', onComponentMouseMove);
+            document.removeEventListener('mouseup', onComponentMouseUp);
+        };
+
+        function onPortClick(e) {
+            e.stopPropagation();
+            const portEl = e.currentTarget;
+            const { componentId, portId } = portEl.dataset;
+
+            const existingConnectionIndex = connections.findIndex(c =>
+                (c.source.componentId === componentId && c.source.portId === portId) ||
+                (c.target.componentId === componentId && c.target.portId === portId)
+            );
+
+            if (existingConnectionIndex > -1) {
+                connections.splice(existingConnectionIndex, 1);
+                if (selectedPort) {
+                    selectedPort.element.classList.remove('selected-port');
+                    selectedPort = null;
+                }
+                render();
+                return;
+            }
+            
+            if (!selectedPort) {
+                const comp = components.find(c => c.id === componentId);
+                const port = comp.ports.find(p => p.id === portId);
+                if (port.type === 'upstream' || connections.some(c => c.source.componentId === componentId && c.source.portId === portId)) return;
+                
+                selectedPort = { componentId, portId, element: portEl };
+                portEl.classList.add('selected-port');
+            } else {
+                const sourceComp = components.find(c => c.id === selectedPort.componentId);
+                const targetComp = components.find(c => c.id === componentId);
+                const targetPort = targetComp.ports.find(p => p.id === portId);
+                
+                portEl.classList.remove('selected-port');
+                selectedPort.element.classList.remove('selected-port');
+
+                let isValid = false;
+                if (selectedPort.componentId !== componentId && targetPort.type === 'upstream' && !connections.some(c => c.target.componentId === componentId && c.target.portId === portId)) {
+                    switch (targetComp.type) {
+                        case 'rootport':
+                            if (sourceComp.type === 'host') isValid = true;
+                            break;
+                        case 'switch':
+                            if (sourceComp.type === 'rootport') isValid = true;
+                            break;
+                        case 'device':
+                        case 'device-t2':
+                            if (['rootport', 'switch'].includes(sourceComp.type)) isValid = true;
+                            break;
+                    }
+                }
+
+                if (isValid) {
+                    connections.push({ source: {componentId: selectedPort.componentId, portId: selectedPort.portId }, target: { componentId, portId } });
+                    render();
+                }
+                selectedPort = null;
+            }
+        };
+        
+        function parseSizeToBytes(sizeStr) {
+            if (typeof sizeStr !== 'string' || sizeStr.length === 0) return 0;
+            const upperSize = sizeStr.toUpperCase();
+            const suffixes = { 'K': 1024, 'M': 1024**2, 'G': 1024**3, 'T': 1024**4 };
+            const suffix = Object.keys(suffixes).find(s => upperSize.endsWith(s));
+            if (suffix) {
+                const num = parseFloat(upperSize.slice(0, -1));
+                return isNaN(num) ? 0 : num * suffixes[suffix];
+            }
+            const num = parseFloat(upperSize);
+            return isNaN(num) ? 0 : num;
+        };
+
+        function formatBytesToSize(bytes) {
+            if (bytes === 0) return '0';
+            const units = ['B', 'K', 'M', 'G', 'T'];
+            const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+            if (i === 0) return `${bytes}${units[i]}`;
+            return `${Math.round(bytes / (1024 ** i))}${units[i]}`;
+        };
+
+
+        function updateQemuCommand() {
+            let machineOpts = ['-M q35,cxl=on'];
+            let memoryOpts = [];
+            let deviceOpts = [];
+            let objectOpts = [];
+            
+            const connectionMap = new Map(connections.map(c => [c.target.componentId, { parentId: c.source.componentId, parentPortId: c.source.portId }]));
+            
+            const hosts = components.filter(c => c.type === 'host');
+            
+            const processed = new Set(hosts.map(h => h.id));
+            let toProcess = components.filter(c => !['host', 'window'].includes(c.type));
+            const processingOrder = [];
+
+            for (let i = 0; i < components.length; i++) { // Failsafe loop
+                const nextBatch = [];
+                for (const comp of toProcess) {
+                    const parentInfo = connectionMap.get(comp.id);
+                    if (!parentInfo || processed.has(parentInfo.parentId)) {
+                        processingOrder.push(comp);
+                        processed.add(comp.id);
+                    } else {
+                        nextBatch.push(comp);
+                    }
+                }
+                if (toProcess.length === nextBatch.length) break; // No progress
+                toProcess = nextBatch;
+            }
+            
+            const windows = components.filter(w => w.type === 'window');
+            windows.forEach((win, index) => {
+                let fmwTargets = win.hostBridgeIds
+                    .map(hostId => components.find(h => h.id === hostId)?.qemuId)
+                    .filter(Boolean)
+                    .map((hostQemuId, targetIndex) => `cxl-fmw.${index}.targets.${targetIndex}=${hostQemuId}`)
+                    .join(',');
+                if (fmwTargets) {
+                     machineOpts[0] += `,cxl-fmw.${index}.size=${win.size},${fmwTargets},cxl-fmw.${index}.interleave-granularity=${win.interleaveGranularity}`;
+                }
+            });
+
+            hosts.forEach(host => {
+                deviceOpts.push(`-device pxb-cxl,bus=pcie.0,id=${host.qemuId},bus_nr=${host.bus_nr}`);
+            });
+
+            processingOrder.forEach(comp => {
+                const parentInfo = connectionMap.get(comp.id);
+                if(!parentInfo) return;
+                
+                const parentComp = components.find(c => c.id === parentInfo.parentId);
+                let parentBus = '';
+
+                if (parentComp.type === 'host') {
+                    parentBus = parentComp.qemuId;
+                } else if (parentComp.type === 'switch') {
+                    const portIndex = parseInt(parentInfo.parentPortId.split('-')[1]);
+                    parentBus = `${parentComp.upstreamQemuId}`;
+                } else if (parentComp.type === 'rootport') {
+                    parentBus = parentComp.qemuId;
+                }
+                 else {
+                    return;
+                }
+
+                switch (comp.type) {
+                     case 'rootport':
+                        deviceOpts.push(`-device cxl-rp,bus=${parentBus},id=${comp.qemuId},chassis=${comp.chassis},slot=${comp.slot}`);
+                        break;
+                    case 'switch':
+                        deviceOpts.push(`-device cxl-upstream,bus=${parentBus},id=${comp.upstreamQemuId}`);
+                        for (let i = 0; i < comp.numDownstreamPorts; i++) {
+                            deviceOpts.push(`-device cxl-downstream,bus=${comp.upstreamQemuId},port=${i},chassis=${comp.chassis},slot=${comp.startSlot + i},id=${comp.qemuId}.${i}`);
+                        }
+                        if (comp.hasCCI) {
+                            deviceOpts.push(`-device cxl-switch-mailbox-cci,bus=${comp.upstreamQemuId},id=${comp.qemuId}-mailbox`);
+                        }
+                        break;
+                    case 'device':
+                        if (comp.isDCD) {
+                             deviceOpts.push(`-device cxl-type3,bus=${parentBus},volatile-dc-memdev=${comp.memObjId},id=${comp.qemuId},num-dc-regions=${comp.numDcRegions},sn=${comp.sn}`);
+                             objectOpts.push(`-object memory-backend-ram,id=${comp.memObjId},size=${comp.size}`);
+                        } else if (comp.memoryType === 'persistent') {
+                            deviceOpts.push(`-device cxl-type3,bus=${parentBus},persistent-memdev=${comp.memObjId},lsa=${comp.lsaObjId},id=${comp.qemuId},sn=${comp.sn}`);
+                            objectOpts.push(`-object memory-backend-file,id=${comp.memObjId},size=${comp.size},mem-path=/tmp/${comp.memObjId}.bin,share=on`);
+                            objectOpts.push(`-object memory-backend-file,id=${comp.lsaObjId},size=${comp.lsaSize},mem-path=/tmp/${comp.lsaObjId}.bin,share=on`);
+                        } else {
+                            deviceOpts.push(`-device cxl-type3,bus=${parentBus},volatile-memdev=${comp.memObjId},id=${comp.qemuId},sn=${comp.sn}`);
+                            objectOpts.push(`-object memory-backend-ram,id=${comp.memObjId},size=${comp.size}`);
+                        }
+                        break;
+                    case 'device-t2':
+                        deviceOpts.push(`-device cxl-accel,bus=${parentBus},volatile-memdev=${comp.memObjId},id=${comp.qemuId},sn=${comp.sn}`);
+                        objectOpts.push(`-object memory-backend-ram,id=${comp.memObjId},size=${comp.size}`);
+                        break;
+                }
+            });
+            
+            const unconnected = components.filter(c => !processed.has(c.id) && c.type !== 'window');
+            let unconnectedLines = [];
+            if (unconnected.length > 0) {
+                if (deviceOpts.length > 0 || objectOpts.length > 0) unconnectedLines.push(''); 
+                unconnectedLines.push('# Unconnected Components (will be ignored by QEMU):');
+                unconnected.forEach(comp => unconnectedLines.push(`#   - ${comp.name} (${comp.qemuId})`));
+            }
+            
+            const finalCommand = [ ...machineOpts, ...memoryOpts, ...deviceOpts, ...objectOpts, ...unconnectedLines].join(' \\\n    ');
+            qemuCommandOutput.textContent = finalCommand;
+
+            if (!toggleCommandIcon.classList.contains('rotate-180')) {
+                setTimeout(() => {
+                    commandWrapper.style.maxHeight = `${commandWrapper.scrollHeight}px`;
+                }, 50);
+            }
+        }
+
+        // --- Event Handlers ---
+        document.getElementById('add-host').addEventListener('click', () => { createComponent('host', 50, 150); render(); });
+        document.getElementById('add-rootport').addEventListener('click', () => { createComponent('rootport', 150, 150); render(); });
+        document.getElementById('add-switch').addEventListener('click', () => { createComponent('switch', 200, 200); render(); });
+        document.getElementById('add-device').addEventListener('click', () => { createComponent('device', 250, 250); render(); });
+        document.getElementById('add-window').addEventListener('click', () => { createComponent('window', 300, 50); render(); });
+        document.getElementById('add-device-t2').addEventListener('click', () => { createComponent('device-t2', 250, 250); render(); });
+        document.getElementById('reset-canvas').addEventListener('click', () => resetCanvas(true));
+        document.getElementById('generate-random').addEventListener('click', generateRandomTopology);
+        document.getElementById('copy-command').addEventListener('click', () => {
+            const textToCopy = qemuCommandOutput.textContent.split('\n').map(l => l.trim()).filter(l => !l.startsWith('#') && l).join(' ').replace(/ \\ /g, '');
+            const textArea = document.createElement('textarea');
+            textArea.value = textToCopy;
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                const feedback = document.getElementById('copy-feedback');
+                feedback.style.opacity = '1';
+                setTimeout(() => { feedback.style.opacity = '0'; }, 2000);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+            }
+            document.body.removeChild(textArea);
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Delete') {
+                if(selectedComponentIds.size > 0) {
+                    if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT') return;
+                    deleteSelectedComponents();
+                }
+            }
+        });
+        
+        commandHeader.addEventListener('click', () => {
+            toggleCommandIcon.classList.toggle('rotate-180');
+            const isCollapsed = !toggleCommandIcon.classList.contains('rotate-180');
+            if(isCollapsed) {
+                commandWrapper.style.maxHeight = '96px';
+            } else {
+                commandWrapper.style.maxHeight = `300px`;
+            }
+        });
+        
+        toggleToolbarBtn.addEventListener('click', () => {
+            toolbarAside.classList.toggle('collapsed');
+            toggleToolbarBtn.querySelector('svg').classList.toggle('rotate-180');
+            setTimeout(render, 310);
+        });
+
+        togglePropertiesBtn.addEventListener('click', () => {
+            propertiesPanel.classList.toggle('collapsed');
+            togglePropertiesBtn.querySelector('svg').classList.toggle('rotate-180');
+            setTimeout(render, 310);
+        });
+        
+        document.getElementById('save-image').addEventListener('click', () => {
+            html2canvas(document.getElementById('canvas')).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'cxl-topology.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        });
+
+        // --- Initial state ---
+        resetCanvas();
+
+    });
+    </script>
+</body>
+</html>
+
