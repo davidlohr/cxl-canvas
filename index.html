@@ -97,6 +97,12 @@
              background-color: #fff;
              border: 1px solid #e2e8f0;
         }
+        #canvas-container {
+            cursor: default;
+        }
+        #canvas-container.panning {
+            cursor: grabbing;
+        }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 flex flex-col h-screen">
@@ -1188,7 +1194,8 @@
                 if (parentComp.type === 'host') {
                     parentBus = parentComp.qemuId;
                 } else if (parentComp.type === 'switch') {
-                    parentBus = parentComp.upstreamQemuId;
+                    const portIndex = parseInt(parentInfo.parentPortId.split('-')[1]);
+                    parentBus = `${parentComp.qemuId}.${portIndex}`;
                 } else if (parentComp.type === 'rootport') {
                     parentBus = parentComp.qemuId;
                 }
