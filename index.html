@@ -162,12 +162,10 @@
                 <div class="pt-4 text-xs text-slate-500">
                     <h3 class="font-semibold mb-2">Instructions:</h3>
                     <ol class="list-decimal list-inside space-y-1">
-                        <li>Add components to the canvas.</li>
-                        <li>Drag on canvas to select multiple components.</li>
-                        <li>Click a component to edit its properties.</li>
-                        <li>Connect components via their ports.</li>
-                        <li>Click a connected port to disconnect.</li>
-                        <li>Press 'Delete' key to remove selected component(s).</li>
+                        <li>Start with a CXL Host Bridge. This is the root of any CXL topology.</li>
+                        <li>Connect a CXL Root Port to the Host Bridge. Root Ports are the entry points into the CXL fabric.</li>
+                        <li>Connect Switches or Devices downstream from Root Ports or other Switches.</li>
+                        <li>Every topology requires at least one CXL Memory Window to map device memory to the host.</li>
                     </ol>
                 </div>
             </div>
