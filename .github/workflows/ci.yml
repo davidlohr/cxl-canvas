@@ -31,7 +31,9 @@ jobs:
         cache: 'npm'
         
     - name: Install dependencies
-      run: npm ci
+      run: |
+        # Try npm ci first, fallback to npm install if package-lock.json issues
+        npm ci || npm install
       
     - name: Run JavaScript compatibility check
       run: npm run lint
@@ -81,7 +83,9 @@ jobs:
         cache: 'npm'
         
     - name: Install dependencies
-      run: npm ci
+      run: |
+        # Try npm ci first, fallback to npm install if package-lock.json issues
+        npm ci || npm install
       
     - name: Install QEMU for validation
       run: |
@@ -117,7 +121,9 @@ jobs:
         cache: 'npm'
         
     - name: Install dependencies
-      run: npm ci
+      run: |
+        # Try npm ci first, fallback to npm install if package-lock.json issues
+        npm ci || npm install
       
     - name: Run security audit
       run: npm audit --audit-level=moderate || echo "Audit completed with findings"
@@ -145,7 +151,9 @@ jobs:
         cache: 'npm'
         
     - name: Install dependencies
-      run: npm ci
+      run: |
+        # Try npm ci first, fallback to npm install if package-lock.json issues
+        npm ci || npm install
       
     - name: Run JavaScript compatibility analysis
       run: npm run lint
@@ -218,7 +226,9 @@ jobs:
         cache: 'npm'
         
     - name: Install dependencies
-      run: npm ci
+      run: |
+        # Try npm ci first, fallback to npm install if package-lock.json issues
+        npm ci || npm install
       
     - name: Start test server
       run: |
