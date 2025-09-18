@@ -159,7 +159,7 @@
                     </button>
                 </div>
                  <div class="pt-4 border-t space-y-2">
-                    <button id="explain-topology" class="w-full bg-teal-600 text-white text-sm font-medium py-1 px-3 rounded-lg shadow-sm hover:bg-teal-700 transition-colors duration-200 flex items-center justify-center space-x-2">
+                    <button id="explain-topology" class="w-full bg-teal-600 text-white text-sm font-medium py-1 px-3 rounded-lg shadow-sm hover:bg-teal-700 transition-colors duration-200 flex items-center justify-center space-x-2 hidden">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
                         <span>✨ Explain Topology</span>
                     </button>
@@ -231,7 +231,7 @@
                     <pre class="bg-gray-900 rounded-md p-3 w-full overflow-x-auto text-sm whitespace-pre"><code id="qemu-command">-machine q35,cxl=on ...</code></pre>
                     <div class="flex flex-col space-y-2 flex-shrink-0">
                         <button id="copy-command" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg transition-colors duration-200 text-sm">Copy</button>
-                        <button id="explain-command" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-3 rounded-lg transition-colors duration-200 text-sm">✨ Explain</button>
+                        <button id="explain-command" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-3 rounded-lg transition-colors duration-200 text-sm hidden">✨ Explain</button>
                     </div>
                 </div>
             </div>
@@ -312,18 +312,50 @@
         // --- Gemini API and AI Feature Functions ---
         
         /**
-         * Calls the Gemini API with a specific prompt.
+         * Checks if the backend is configured with an API key and shows AI buttons if it is.
+         */
+        async function checkAiAvailability() {
+            try {
+                // We send a simple "ping" to our backend endpoint.
+                const response = await fetch('/api/explain', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: 'ping' }) 
+                });
+
+                // A 200 OK response means the server is running and the API key is likely present.
+                // A 500 error from our proxy specifically means the API key is not configured.
+                if (response.ok) {
+                    console.log("AI features enabled: Backend connection successful.");
+                    document.getElementById('explain-topology').classList.remove('hidden');
+                    document.getElementById('explain-command').classList.remove('hidden');
+                } else {
+                    const errorData = await response.json().catch(() => null);
+                    if (errorData && errorData.error && errorData.error.includes('API key not configured')) {
+                        console.warn("AI features disabled: GEMINI_API_KEY is not set on the server. See README.md for instructions.");
+                    } else {
+                        console.warn(`AI features disabled: Backend check failed with status ${response.status}.`);
+                    }
+                }
+            } catch (error) {
+                console.warn("AI features disabled: Could not connect to the backend proxy at /api/explain. Ensure it's deployed correctly and the API folder is in the root directory.");
+            }
+        }
+
+        /**
+         * Calls the Gemini API via our secure backend proxy.
          * @param {string} prompt - The prompt to send to the model.
          * @param {number} retries - The number of retry attempts.
          * @param {number} delay - The delay in ms between retries.
          * @returns {Promise<string>} - The generated text from the model.
          */
         async function callGeminiAPI(prompt, retries = 3, delay = 1000) {
-            const apiKey = ""; // Canvas will provide this.
-            // The ?key= parameter can cause 401 errors when the key is empty.
-            // The Canvas environment injects authentication, so the parameter is not needed.
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent`;
-            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+            // This URL now points to your own backend function, not directly to Google.
+            // This path works when you deploy to a service like Vercel or Netlify.
+            const apiUrl = '/api/explain'; 
+
+            // The payload now only needs the prompt, as the API key is handled on the server.
+            const payload = { prompt };
 
             for (let i = 0; i < retries; i++) {
                 try {
@@ -340,10 +372,14 @@
                     if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                         return result.candidates[0].content.parts[0].text;
                     } else {
-                        throw new Error("Invalid response structure from Gemini API");
+                        // Check if the backend sent a specific error message.
+                        if (result.error) {
+                            throw new Error(`Backend error: ${result.error}`);
+                        }
+                        throw new Error("Invalid response structure from backend");
                     }
                 } catch (error) {
-                    console.error(`Gemini API call attempt ${i + 1} failed:`, error);
+                    console.error(`API call attempt ${i + 1} failed:`, error);
                     if (i < retries - 1) {
                         await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
                     } else {
@@ -1566,9 +1602,9 @@
 
         // --- Initial state ---
         resetCanvas();
+        checkAiAvailability();
 
     });
     </script>
 </body>
 </html>
-
