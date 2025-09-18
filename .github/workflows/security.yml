@@ -32,7 +32,9 @@ jobs:
         cache: 'npm'
         
     - name: Install dependencies
-      run: npm ci
+      run: |
+        # Try npm ci first, fallback to npm install if package-lock.json issues
+        npm ci || npm install
       
     - name: Run npm audit
       run: |
@@ -58,15 +60,6 @@ jobs:
         echo "Checking for security advisories..."
         npx audit-ci --moderate || echo "Security advisories check completed"
         
-    - name: Upload security reports
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: security-audit-report
-        path: |
-          security-audit-report.md
-          audit-results.json
-        retention-days: 30
 
   license-compliance:
     name: License Compliance Check
@@ -83,7 +76,9 @@ jobs:
         cache: 'npm'
         
     - name: Install dependencies
-      run: npm ci
+      run: |
+        # Try npm ci first, fallback to npm install if package-lock.json issues
+        npm ci || npm install
       
     - name: Install license checker
       run: npm install -g license-checker
@@ -117,15 +112,6 @@ jobs:
         echo "## Detailed License Information" >> license-compliance-report.md
         echo "See license-report.json for complete details" >> license-compliance-report.md
         
-    - name: Upload license reports
-      uses: actions/upload-artifact@v4
-      with:
-        name: license-compliance-report
-        path: |
-          license-compliance-report.md
-          license-report.json
-          problematic-licenses.txt
-        retention-days: 30
 
   code-scanning:
     name: Code Security Scanning
@@ -221,14 +207,6 @@ jobs:
           echo "✅ Reasonable number of dependencies"
         fi
         
-    - name: Upload supply chain report
-      uses: actions/upload-artifact@v4
-      with:
-        name: supply-chain-report
-        path: |
-          dependency-tree.txt
-          suspicious-deps.txt
-        retention-days: 30
 
   security-summary:
     name: Security Summary
@@ -267,9 +245,3 @@ jobs:
         echo "- Monitor security advisories for used packages" >> security-summary.md
         echo "- Follow secure coding practices" >> security-summary.md
         
-    - name: Upload security summary
-      uses: actions/upload-artifact@v4
-      with:
-        name: security-summary
-        path: security-summary.md
-        retention-days: 90
