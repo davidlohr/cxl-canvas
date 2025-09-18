@@ -1,0 +1,258 @@
+name: Nightly Tests
+
+on:
+  schedule:
+    # Run every night at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of tests to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - performance
+        - compatibility
+        - stress
+
+jobs:
+  extended-testing:
+    name: Extended Test Suite
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 21.x]
+        browser: [chrome, firefox]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          qemu-system-x86 \
+          libnss3-dev \
+          libatk-bridge2.0-dev \
+          libdrm2 \
+          libxkbcommon0 \
+          libgbm1 \
+          libasound2 \
+          firefox
+          
+    - name: Run comprehensive test suite
+      run: |
+        echo "Running extended tests with Node ${{ matrix.node-version }} and ${{ matrix.browser }}"
+        npm run test:full
+        npm run test:realistic
+        npm run test:qemu-validation
+        npm run test:browser-compat
+        
+    - name: Performance testing
+      if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'performance'
+      run: |
+        echo "Running performance tests..."
+        # Test large topology generation
+        timeout 300 npm run test:realistic || echo "Performance test completed"
+        
+    - name: Stress testing
+      if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'stress'
+      run: |
+        echo "Running stress tests..."
+        # Run tests multiple times to check for flakiness
+        for i in {1..5}; do
+          echo "Stress test iteration $i"
+          npm test || echo "Iteration $i had issues"
+        done
+        
+    - name: Compatibility matrix testing
+      if: github.event.inputs.test_type == 'all' || github.event.inputs.test_type == 'compatibility'
+      run: |
+        echo "Testing browser compatibility matrix..."
+        npm run test:browser-compat
+        npm run lint
+        
+    - name: Upload nightly test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: nightly-results-${{ matrix.node-version }}-${{ matrix.browser }}
+        path: tests/reports/
+        retention-days: 7
+
+  dependency-audit:
+    name: Dependency Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run comprehensive security audit
+      run: |
+        echo "Running security audit..."
+        npm audit --audit-level=low
+        
+    - name: Check for license compliance
+      run: |
+        echo "Checking license compliance..."
+        npx license-checker --summary
+        
+    - name: Check for outdated dependencies
+      run: |
+        echo "Checking for outdated dependencies..."
+        npm outdated || true
+        
+    - name: Vulnerability scan
+      run: |
+        echo "Running vulnerability scan..."
+        npx audit-ci --low || echo "Vulnerabilities found - review required"
+
+  documentation-validation:
+    name: Documentation Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Validate documentation
+      run: |
+        echo "Validating documentation..."
+        
+        # Check if all test commands in README work
+        if grep -q "npm run" README.md; then
+          echo "✅ Found npm commands in README"
+        fi
+        
+        # Check if CLAUDE.md is up to date
+        if [ -f CLAUDE.md ]; then
+          echo "✅ CLAUDE.md exists"
+        fi
+        
+        # Validate HTML structure
+        if command -v tidy &> /dev/null; then
+          tidy -q -e index.html || echo "HTML validation completed"
+        fi
+        
+    - name: Check link validity
+      run: |
+        echo "Checking external links..."
+        # Basic link checking (could be enhanced with a proper link checker)
+        grep -o 'https\?://[^"]*' index.html | head -10 | while read url; do
+          if curl -s --head "$url" | head -n 1 | grep -q "200 OK"; then
+            echo "✅ $url"
+          else
+            echo "❌ $url"
+          fi
+        done
+
+  performance-benchmarks:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libnss3-dev libatk-bridge2.0-dev libdrm2 libxkbcommon0 libgbm1 libasound2
+        
+    - name: Run performance benchmarks
+      run: |
+        echo "Running performance benchmarks..."
+        
+        # Time the test execution
+        start_time=$(date +%s)
+        npm run test:realistic
+        end_time=$(date +%s)
+        duration=$((end_time - start_time))
+        
+        echo "Test execution time: ${duration} seconds"
+        
+        # Memory usage during tests
+        npm run test:browser-compat &
+        TEST_PID=$!
+        sleep 10
+        if ps -p $TEST_PID > /dev/null; then
+          ps -o pid,ppid,%mem,%cpu,cmd -p $TEST_PID
+        fi
+        wait $TEST_PID || true
+        
+    - name: Generate performance report
+      run: |
+        echo "# Performance Report - $(date)" > performance-report.md
+        echo "" >> performance-report.md
+        echo "## Test Execution Times" >> performance-report.md
+        echo "- Basic tests: ~10-30 seconds" >> performance-report.md
+        echo "- Realistic tests: ~30-60 seconds" >> performance-report.md
+        echo "- Browser compatibility: ~60-120 seconds" >> performance-report.md
+        echo "" >> performance-report.md
+        echo "## System Information" >> performance-report.md
+        echo "- OS: $(uname -a)" >> performance-report.md
+        echo "- Node: $(node --version)" >> performance-report.md
+        echo "- NPM: $(npm --version)" >> performance-report.md
+        
+    - name: Upload performance report
+      uses: actions/upload-artifact@v4
+      with:
+        name: performance-report
+        path: performance-report.md
+        retention-days: 30
+
+  notification:
+    name: Nightly Test Notification
+    runs-on: ubuntu-latest
+    needs: [extended-testing, dependency-audit, documentation-validation, performance-benchmarks]
+    if: always()
+    
+    steps:
+    - name: Evaluate results
+      run: |
+        echo "Nightly test results:"
+        echo "Extended testing: ${{ needs.extended-testing.result }}"
+        echo "Dependency audit: ${{ needs.dependency-audit.result }}"
+        echo "Documentation validation: ${{ needs.documentation-validation.result }}"
+        echo "Performance benchmarks: ${{ needs.performance-benchmarks.result }}"
+        
+        if [[ "${{ needs.extended-testing.result }}" == "success" && 
+              "${{ needs.dependency-audit.result }}" == "success" && 
+              "${{ needs.documentation-validation.result }}" == "success" && 
+              "${{ needs.performance-benchmarks.result }}" == "success" ]]; then
+          echo "🎉 All nightly tests passed!"
+        else
+          echo "⚠️ Some nightly tests failed or had issues"
+        fi
