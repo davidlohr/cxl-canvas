@@ -83,7 +83,7 @@ class RealisticTestRunner {
     for (let i = 0; i < count; i++) {
       // Generate random topology
       await page.click('#generate-random');
-      await page.waitForTimeout(2000);
+      await page.waitForDelay(2000);
       
       const qemuCommand = await this.getQemuCommand(page);
       const testResult = this.createTestResult(`Random Topology ${i + 1}`, qemuCommand);
@@ -110,14 +110,14 @@ class RealisticTestRunner {
     
     // Reset to known state
     await page.click('#reset-canvas');
-    await page.waitForTimeout(1000);
+    await page.waitForDelay(1000);
     
     // Add components but don't try to connect them automatically
     // Just test that the app handles additional components gracefully
     await page.click('#add-device');
-    await page.waitForTimeout(500);
+    await page.waitForDelay(500);
     await page.click('#add-switch');
-    await page.waitForTimeout(500);
+    await page.waitForDelay(500);
     
     const qemuCommand = await this.getQemuCommand(page);
     const testResult = this.createTestResult('Manual Component Addition', qemuCommand);
@@ -148,10 +148,10 @@ class RealisticTestRunner {
     
     // Reset and add memory window
     await page.click('#reset-canvas');
-    await page.waitForTimeout(1000);
+    await page.waitForDelay(1000);
     
     await page.click('#add-window');
-    await page.waitForTimeout(1000);
+    await page.waitForDelay(1000);
     
     // Try to configure the memory window
     const windowConfigured = await this.tryConfigureMemoryWindow(page);
@@ -185,7 +185,7 @@ class RealisticTestRunner {
     
     // Generate a random topology to have components to test
     await page.click('#generate-random');
-    await page.waitForTimeout(2000);
+    await page.waitForDelay(2000);
     
     const qemuCommand = await this.getQemuCommand(page);
     const testResult = this.createTestResult('Component Properties', qemuCommand);
@@ -285,19 +285,19 @@ class RealisticTestRunner {
       const components = await page.$$('.cxl-component');
       if (components.length > 0) {
         await components[components.length - 1].click();
-        await page.waitForTimeout(500);
+        await page.waitForDelay(500);
         
         // Try to check a host bridge if the checkbox exists
         const hostCheckbox = await page.$('#host-checkboxes input[type="checkbox"]');
         if (hostCheckbox) {
           await hostCheckbox.click();
-          await page.waitForTimeout(200);
+          await page.waitForDelay(200);
           
           // Try to update
           const updateButton = await page.$('#update-component');
           if (updateButton) {
             await updateButton.click();
-            await page.waitForTimeout(500);
+            await page.waitForDelay(500);
             return true;
           }
         }

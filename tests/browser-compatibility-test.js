@@ -240,7 +240,7 @@ class BrowserCompatibilityTester {
         critical: true,
         test: async () => {
           await page.click('#add-host');
-          await page.waitForTimeout(500);
+          await page.waitForDelay(500);
           const components = await page.$$('.cxl-component');
           return components.length > 0;
         }
@@ -251,11 +251,11 @@ class BrowserCompatibilityTester {
         test: async () => {
           // Add a minimal topology: host + root port + memory window
           await page.click('#add-host');
-          await page.waitForTimeout(300);
+          await page.waitForDelay(300);
           await page.click('#add-rootport');
-          await page.waitForTimeout(300);
+          await page.waitForDelay(300);
           await page.click('#add-window');
-          await page.waitForTimeout(800);
+          await page.waitForDelay(800);
           
           // Check if the QEMU command element exists and has content
           const qemuElement = await page.$('#qemu-command');

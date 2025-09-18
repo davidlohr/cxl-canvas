@@ -99,7 +99,7 @@ class CxlTestRunner {
       await this.createTopology(page, scenario);
 
       // Wait for QEMU command generation
-      await page.waitForTimeout(1000);
+      await page.waitForDelay(1000);
 
       // Extract the generated QEMU command
       const qemuCommand = await page.evaluate(() => {
@@ -150,7 +150,7 @@ class CxlTestRunner {
    */
   async clearCanvas(page) {
     await page.click('#reset-canvas');
-    await page.waitForTimeout(500);
+    await page.waitForDelay(500);
   }
 
   /**
@@ -166,7 +166,7 @@ class CxlTestRunner {
     }
 
     // Wait for all components to render
-    await page.waitForTimeout(1000);
+    await page.waitForDelay(1000);
 
     // Create connections
     for (const connection of scenario.connections) {
@@ -174,7 +174,7 @@ class CxlTestRunner {
     }
 
     // Wait for QEMU command to update
-    await page.waitForTimeout(500);
+    await page.waitForDelay(500);
   }
 
   /**
@@ -197,7 +197,7 @@ class CxlTestRunner {
 
     // Click the button to create component
     await page.click(button);
-    await page.waitForTimeout(300);
+    await page.waitForDelay(300);
 
     // Get the latest component ID
     const componentId = await page.evaluate(() => {
@@ -269,7 +269,7 @@ class CxlTestRunner {
   async updateComponentProperties(page, componentId, comp) {
     // Click on component to select it
     await page.click(`#${componentId}`);
-    await page.waitForTimeout(300);
+    await page.waitForDelay(300);
 
     // Update properties based on component type
     await page.evaluate((comp) => {
@@ -282,7 +282,7 @@ class CxlTestRunner {
       }
     }, comp);
 
-    await page.waitForTimeout(300);
+    await page.waitForDelay(300);
   }
 
   /**
@@ -303,12 +303,12 @@ class CxlTestRunner {
     // Click source port
     const sourcePortSelector = `.port[data-component-id="${sourceId}"][data-port-id="${connection.source.portId}"]`;
     await page.click(sourcePortSelector);
-    await page.waitForTimeout(200);
+    await page.waitForDelay(200);
 
     // Click target port
     const targetPortSelector = `.port[data-component-id="${targetId}"][data-port-id="${connection.target.portId}"]`;
     await page.click(targetPortSelector);
-    await page.waitForTimeout(200);
+    await page.waitForDelay(200);
   }
 
   /**
