@@ -41,7 +41,31 @@ jobs:
     - name: Run browser compatibility tests
       run: |
         sudo apt-get update
-        sudo apt-get install -y libnss3-dev libatk-bridge2.0-dev libdrm2 libxkbcommon0 libgbm1 libasound2
+        # Install core Puppeteer dependencies
+        sudo apt-get install -y \
+          libnss3-dev \
+          libatk-bridge2.0-dev \
+          libdrm2 \
+          libxkbcommon0 \
+          libgbm1 \
+          libxss1 \
+          libxrandr2 \
+          libpangocairo-1.0-0 \
+          libatk1.0-0 \
+          libcairo-gobject2 \
+          libgtk-3-0 \
+          libgdk-pixbuf2.0-0 \
+          fonts-liberation \
+          libappindicator3-1 \
+          libu2f-udev \
+          xdg-utils
+        
+        # Install audio dependencies with fallback
+        sudo apt-get install -y libasound2 || sudo apt-get install -y libasound2-dev || echo "Audio packages not available"
+        
+        # Try to install optional dependencies
+        sudo apt-get install -y libgconf-2-4 || echo "libgconf-2-4 not available (optional)"
+        
         npm run test:browser-compat
         
     - name: Run QEMU validation
