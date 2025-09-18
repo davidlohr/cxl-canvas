@@ -25,7 +25,10 @@ class ValidationTestRunner {
     try {
       await this.server.start();
       
-      const browser = await puppeteer.launch({ headless: 'new' });
+      const browser = await puppeteer.launch({ 
+        headless: 'new',
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
       const page = await browser.newPage();
       await page.setViewport({ width: 1920, height: 1080 });
       
