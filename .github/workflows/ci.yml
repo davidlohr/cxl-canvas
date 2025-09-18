@@ -66,62 +66,6 @@ jobs:
         retention-days: 30
         include-hidden-files: true
         
-  browser-compatibility:
-    name: Browser Compatibility
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Use Node.js 20.x
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20.x
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm ci
-      
-    - name: Install system dependencies for Puppeteer
-      run: |
-        sudo apt-get update
-        # Install core Puppeteer dependencies
-        sudo apt-get install -y \
-          libnss3-dev \
-          libatk-bridge2.0-dev \
-          libdrm2 \
-          libxkbcommon0 \
-          libgbm1 \
-          libxss1 \
-          libxrandr2 \
-          libpangocairo-1.0-0 \
-          libatk1.0-0 \
-          libcairo-gobject2 \
-          libgtk-3-0 \
-          libgdk-pixbuf2.0-0 \
-          fonts-liberation \
-          libappindicator3-1 \
-          libu2f-udev \
-          xdg-utils
-        
-        # Install audio dependencies with fallback
-        sudo apt-get install -y libasound2 || sudo apt-get install -y libasound2-dev || echo "Audio packages not available"
-        
-        # Try to install optional dependencies
-        sudo apt-get install -y libgconf-2-4 || echo "libgconf-2-4 not available (optional)"
-          
-    - name: Run browser compatibility tests
-      run: npm run test:browser-compat
-      
-    - name: Upload browser test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: browser-compatibility-results
-        path: tests/reports/
-        retention-days: 30
-
   qemu-validation:
     name: QEMU Command Validation
     runs-on: ubuntu-latest
@@ -187,7 +131,7 @@ jobs:
         npx audit-ci --moderate || echo "Vulnerability check completed"
         
   lint-and-format:
-    name: Code Quality
+    name: Code Quality & Browser Compatibility
     runs-on: ubuntu-latest
     
     steps:
@@ -218,6 +162,45 @@ jobs:
         else
           echo "HTML Tidy not available, skipping validation"
         fi
+        
+    - name: Install system dependencies for Puppeteer
+      run: |
+        sudo apt-get update
+        # Install core Puppeteer dependencies
+        sudo apt-get install -y \
+          libnss3-dev \
+          libatk-bridge2.0-dev \
+          libdrm2 \
+          libxkbcommon0 \
+          libgbm1 \
+          libxss1 \
+          libxrandr2 \
+          libpangocairo-1.0-0 \
+          libatk1.0-0 \
+          libcairo-gobject2 \
+          libgtk-3-0 \
+          libgdk-pixbuf2.0-0 \
+          fonts-liberation \
+          libappindicator3-1 \
+          libu2f-udev \
+          xdg-utils
+        
+        # Install audio dependencies with fallback
+        sudo apt-get install -y libasound2 || sudo apt-get install -y libasound2-dev || echo "Audio packages not available"
+        
+        # Try to install optional dependencies
+        sudo apt-get install -y libgconf-2-4 || echo "libgconf-2-4 not available (optional)"
+          
+    - name: Run browser compatibility tests
+      run: npm run test:browser-compat
+      
+    - name: Upload browser test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: browser-compatibility-results
+        path: tests/reports/
+        retention-days: 30
         
   deployment-preview:
     name: Deployment Preview
