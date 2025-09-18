@@ -221,7 +221,6 @@
         <div id="copy-feedback" class="text-green-400 text-sm mt-2 opacity-0 transition-opacity">Command copied to clipboard!</div>
     </footer>
 
-
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         // --- DOM Element References ---
@@ -270,79 +269,97 @@
             return `0x${randomHex.padStart(8, '0')}`;
         }
 
-        function createComponent(type, x, y) {
+        function createComponent(type, x, y, props = {}) {
             const id = `comp-${idCounter++}`;
-            const componentData = { id, type, x, y, isDeletable: true };
+            let componentData = { id, type, x, y, isDeletable: true, ...props };
             
             switch (type) {
                 case 'host':
-                    componentData.name = 'CXL Host Bridge';
-                    componentData.baseColor = 'indigo';
-                    componentData.qemuId = `cxl.${components.filter(c => c.type === 'host').length}`;
-                    componentData.bus_nr = 12 + components.filter(c => c.type === 'host').length;
-                    componentData.ports = [{ type: 'downstream', id: 'out-0' }];
+                    componentData = {
+                        name: 'CXL Host Bridge',
+                        baseColor: 'indigo',
+                        qemuId: `cxl.${components.filter(c => c.type === 'host').length}`,
+                        bus_nr: 12 + components.filter(c => c.type === 'host').length,
+                        ports: [{ type: 'downstream', id: 'out-0' }],
+                        ...componentData
+                    };
                     break;
                 case 'rootport':
                     const rpCount = components.filter(c => c.type === 'rootport').length;
-                    componentData.name = 'CXL Root Port';
-                    componentData.baseColor = 'purple';
-                    componentData.qemuId = `rp-comp${rpCount}`;
-                    componentData.numDownstreamPorts = 2;
-                    componentData.chassis = rpCount;
-                    componentData.slot = 0;
-                    componentData.ports = [
-                        { type: 'upstream', id: 'in-0' },
-                        ...Array.from({ length: 2 }, (_, i) => ({ type: 'downstream', id: `out-${i}` }))
-                    ];
+                    componentData = {
+                        name: 'CXL Root Port',
+                        baseColor: 'purple',
+                        qemuId: `rp-${rpCount}`,
+                        numDownstreamPorts: 2,
+                        chassis: rpCount,
+                        slot: 0,
+                        ports: [
+                            { type: 'upstream', id: 'in-0' },
+                            ...Array.from({ length: 2 }, (_, i) => ({ type: 'downstream', id: `out-${i}` }))
+                        ],
+                        ...componentData
+                    };
                     break;
                 case 'switch':
                     const switchCount = components.filter(c => c.type === 'switch').length;
-                    componentData.name = `CXL Switch`;
-                    componentData.baseColor = 'sky';
-                    componentData.qemuId = `sw${switchCount}`;
-                    componentData.upstreamQemuId = `us${switchCount}`;
-                    componentData.numDownstreamPorts = 4;
-                    componentData.chassis = 0;
-                    componentData.startSlot = 0;
-                    componentData.hasCCI = false;
-                    componentData.ports = [
-                        { type: 'upstream', id: 'in-0' },
-                        ...Array.from({ length: 4 }, (_, i) => ({ type: 'downstream', id: `out-${i}` }))
-                    ];
+                     componentData = {
+                        name: `CXL Switch`,
+                        baseColor: 'sky',
+                        qemuId: `sw${switchCount}`,
+                        upstreamQemuId: `us${switchCount}`,
+                        numDownstreamPorts: 4,
+                        chassis: 0,
+                        startSlot: 0,
+                        hasCCI: false,
+                        ports: [
+                            { type: 'upstream', id: 'in-0' },
+                            ...Array.from({ length: 4 }, (_, i) => ({ type: 'downstream', id: `out-${i}` }))
+                        ],
+                        ...componentData
+                    };
                     break;
                 case 'device':
                     const deviceCount = components.filter(c => c.type === 'device').length;
-                    componentData.name = 'CXL Type3 Device';
-                    componentData.baseColor = 'emerald';
-                    componentData.qemuId = `cxl-type3-dev-${deviceCount}`;
-                    componentData.memObjId = `mem${deviceCount}`;
-                    componentData.lsaObjId = `lsa-mem${deviceCount}`;
-                    componentData.size = '512M';
-                    componentData.memoryType = 'volatile';
-                    componentData.lsaSize = '16M';
-                    componentData.isDCD = false;
-                    componentData.sn = generateRandomSN();
-                    componentData.numDcRegions = 1;
-                    componentData.ports = [{ type: 'upstream', id: 'in-0' }];
+                    componentData = {
+                        name: 'CXL Type3 Device',
+                        baseColor: 'emerald',
+                        qemuId: `cxl-type3-dev-${deviceCount}`,
+                        memObjId: `mem${deviceCount}`,
+                        lsaObjId: `lsa-mem${deviceCount}`,
+                        size: '512M',
+                        memoryType: 'volatile',
+                        lsaSize: '16M',
+                        isDCD: false,
+                        sn: generateRandomSN(),
+                        numDcRegions: 1,
+                        ports: [{ type: 'upstream', id: 'in-0' }],
+                        ...componentData
+                    };
                     break;
                  case 'device-t2':
                     const accelCount = components.filter(c => c.type === 'device-t2').length;
-                    componentData.name = 'CXL Type2 Device';
-                    componentData.baseColor = 'orange';
-                    componentData.qemuId = `cxl-ac-dev-${accelCount}`;
-                    componentData.memObjId = `mem-ac-${accelCount}`;
-                    componentData.size = '256M';
-                    componentData.sn = generateRandomSN();
-                    componentData.ports = [{ type: 'upstream', id: 'in-0' }];
+                    componentData = {
+                        name: 'CXL Type2 Device',
+                        baseColor: 'orange',
+                        qemuId: `cxl-ac-dev-${accelCount}`,
+                        memObjId: `mem-ac-${accelCount}`,
+                        size: '256M',
+                        sn: generateRandomSN(),
+                        ports: [{ type: 'upstream', id: 'in-0' }],
+                        ...componentData
+                    };
                     break;
                 case 'window':
-                    componentData.name = 'CXL Memory Window';
-                    componentData.baseColor = 'yellow';
-                    componentData.qemuId = `cxl-window-${components.filter(c => c.type === 'window').length}`;
-                    componentData.size = '4G';
-                    componentData.hostBridgeIds = [];
-                    componentData.interleaveGranularity = '256';
-                    componentData.ports = [];
+                     componentData = {
+                        name: 'CXL Window',
+                        baseColor: 'yellow',
+                        qemuId: `fmw.${components.filter(c => c.type === 'window').length}`,
+                        size: '4G',
+                        hostBridgeIds: [],
+                        interleaveGranularity: '256',
+                        ports: [],
+                        ...componentData
+                    };
                     break;
             }
             components.push(componentData);
@@ -1144,6 +1161,7 @@
             let memoryOpts = [];
             let deviceOpts = [];
             let objectOpts = [];
+            let hostPortCounters = new Map();
             
             const connectionMap = new Map(connections.map(c => [c.target.componentId, { parentId: c.source.componentId, parentPortId: c.source.portId }]));
             
@@ -1182,6 +1200,7 @@
 
             hosts.forEach(host => {
                 deviceOpts.push(`-device pxb-cxl,bus=pcie.0,id=${host.qemuId},bus_nr=${host.bus_nr}`);
+                hostPortCounters.set(host.id, 0);
             });
 
             processingOrder.forEach(comp => {
@@ -1197,7 +1216,8 @@
                     const portIndex = parseInt(parentInfo.parentPortId.split('-')[1]);
                     parentBus = `${parentComp.qemuId}.${portIndex}`;
                 } else if (parentComp.type === 'rootport') {
-                    parentBus = parentComp.qemuId;
+                    const portIndex = parseInt(parentInfo.parentPortId.split('-')[1]);
+                    parentBus = `${parentComp.qemuId}.${portIndex}`;
                 }
                  else {
                     return;
@@ -1205,7 +1225,20 @@
 
                 switch (comp.type) {
                      case 'rootport':
-                        deviceOpts.push(`-device cxl-rp,bus=${parentBus},id=${comp.qemuId},chassis=${comp.chassis},slot=${comp.slot}`);
+                        const parentHost = components.find(c => c.id === parentInfo.parentId);
+                        if(parentHost && parentHost.type === 'host') {
+                            let portNum = hostPortCounters.get(parentHost.id) || 0;
+                            for (let i = 0; i < comp.numDownstreamPorts; i++) {
+                                const portId = `out-${i}`;
+                                const isPortConnected = connections.some(conn => conn.source.componentId === comp.id && conn.source.portId === portId);
+                                if (isPortConnected) {
+                                    const deviceId = `${comp.qemuId}.${i}`;
+                                    deviceOpts.push(`-device cxl-rp,bus=${parentBus},port=${portNum},id=${deviceId},chassis=${comp.chassis},slot=${comp.slot + i}`);
+                                    portNum++;
+                                }
+                            }
+                            hostPortCounters.set(parentHost.id, portNum);
+                        }
                         break;
                     case 'switch':
                         deviceOpts.push(`-device cxl-upstream,bus=${parentBus},id=${comp.upstreamQemuId}`);
@@ -1247,11 +1280,6 @@
             const finalCommand = [ ...machineOpts, ...memoryOpts, ...deviceOpts, ...objectOpts, ...unconnectedLines].join(' \\\n    ');
             qemuCommandOutput.textContent = finalCommand;
 
-            if (!toggleCommandIcon.classList.contains('rotate-180')) {
-                setTimeout(() => {
-                    commandWrapper.style.maxHeight = `${commandWrapper.scrollHeight}px`;
-                }, 50);
-            }
         }
 
         // --- Event Handlers ---
