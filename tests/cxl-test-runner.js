@@ -39,7 +39,7 @@ class CxlTestRunner {
       
       // Launch browser
       const browser = await puppeteer.launch({
-        headless: this.options.headless,
+        headless: this.options.headless === true ? 'new' : this.options.headless,
         args: ['--no-sandbox', '--disable-setuid-sandbox']
       });
 

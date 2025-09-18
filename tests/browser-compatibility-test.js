@@ -118,19 +118,19 @@ class BrowserCompatibilityTester {
       {
         name: 'Chrome Latest',
         product: 'chrome',
-        headless: true,
+        headless: 'new',
         args: ['--no-sandbox', '--disable-dev-shm-usage']
       },
       {
         name: 'Chrome Older Version',
         product: 'chrome',
-        headless: true,
+        headless: 'new',
         args: ['--no-sandbox', '--disable-dev-shm-usage', '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36']
       },
       {
         name: 'Firefox (via Chrome engine)', // Puppeteer limitation
         product: 'chrome',
-        headless: true,
+        headless: 'new',
         args: ['--no-sandbox', '--disable-dev-shm-usage', '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0']
       }
     ];
@@ -151,7 +151,7 @@ class BrowserCompatibilityTester {
     try {
       const browser = await puppeteer.launch({
         product: config.product,
-        headless: config.headless,
+        headless: config.headless === true ? 'new' : config.headless,
         args: config.args
       });
 
