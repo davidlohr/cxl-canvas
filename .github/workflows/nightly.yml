@@ -92,6 +92,7 @@ jobs:
         name: nightly-results-${{ matrix.node-version }}-${{ matrix.browser }}
         path: tests/reports/
         retention-days: 7
+        include-hidden-files: true
 
   dependency-audit:
     name: Dependency Security Audit

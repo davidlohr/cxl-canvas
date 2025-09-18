@@ -111,25 +111,16 @@ jobs:
         retention-days: 90
         
     - name: Create GitHub Release
-      uses: actions/create-release@v1
+      uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref_name || github.event.inputs.version }}
-        release_name: CXL Canvas ${{ github.ref_name || github.event.inputs.version }}
+        name: CXL Canvas ${{ github.ref_name || github.event.inputs.version }}
         body_path: RELEASE_NOTES.md
         draft: false
         prerelease: false
-        
-    - name: Upload release assets
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: cxl-canvas-release.zip
-        asset_name: cxl-canvas-${{ github.ref_name || github.event.inputs.version }}.zip
-        asset_content_type: application/zip
+        files: cxl-canvas-release.zip
 
   deploy-pages:
     name: Deploy to GitHub Pages
