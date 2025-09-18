@@ -17,6 +17,11 @@ on:
         - compatibility
         - stress
 
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+
 jobs:
   extended-testing:
     name: Extended Test Suite

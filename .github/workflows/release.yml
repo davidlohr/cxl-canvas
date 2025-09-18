@@ -11,6 +11,12 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  actions: read
+
 jobs:
   test-before-release:
     name: Pre-Release Testing
@@ -112,8 +118,6 @@ jobs:
         
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref_name || github.event.inputs.version }}
         name: CXL Canvas ${{ github.ref_name || github.event.inputs.version }}
@@ -121,6 +125,7 @@ jobs:
         draft: false
         prerelease: false
         files: cxl-canvas-release.zip
+        token: ${{ secrets.GITHUB_TOKEN }}
 
   deploy-pages:
     name: Deploy to GitHub Pages
@@ -132,6 +137,7 @@ jobs:
       contents: read
       pages: write
       id-token: write
+      actions: read
     
     environment:
       name: github-pages
