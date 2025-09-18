@@ -1,0 +1,222 @@
+{
+  "summary": {
+    "total": 9,
+    "passed": 9,
+    "failed": 0,
+    "successRate": 100
+  },
+  "tests": [
+    {
+      "name": "Default Topology",
+      "passed": true,
+      "errors": [],
+      "notes": [
+        "✓ CXL machine configuration present",
+        "✓ CXL host bridge present"
+      ],
+      "qemuCommand": "-M q35,cxl=on \\\n    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12",
+      "validation": {
+        "isValid": true,
+        "errors": [],
+        "warnings": [],
+        "parsed": {
+          "machine": "q35,cxl=on",
+          "devices": [],
+          "objects": [],
+          "other": [],
+          "errors": []
+        }
+      }
+    },
+    {
+      "name": "Random Topology 1",
+      "passed": true,
+      "errors": [],
+      "notes": [
+        "✓ CXL machine configuration present",
+        "✓ CXL host bridge present",
+        "Generated 29 devices and 12 objects",
+        "✓ Contains CXL endpoint devices"
+      ],
+      "qemuCommand": "-M q35,cxl=on \\\n    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12 \\\n    -device pxb-cxl,bus=pcie.0,id=cxl.1,bus_nr=13 \\\n    -device cxl-rp,bus=cxl.0,port=0,id=rp-0.0,chassis=0,slot=0 \\\n    -device cxl-rp,bus=cxl.1,port=0,id=rp-1.0,chassis=1,slot=0 \\\n    -device cxl-rp,bus=cxl.1,port=1,id=rp-1.1,chassis=1,slot=1 \\\n    -device cxl-rp,bus=cxl.1,port=2,id=rp-1.2,chassis=1,slot=2 \\\n    -device cxl-upstream,bus=rp-0.0,id=us0 \\\n    -device cxl-downstream,bus=us0,port=0,chassis=0,slot=0,id=sw0.0 \\\n    -device cxl-downstream,bus=us0,port=1,chassis=0,slot=1,id=sw0.1 \\\n    -device cxl-downstream,bus=us0,port=2,chassis=0,slot=2,id=sw0.2 \\\n    -device cxl-switch-mailbox-cci,bus=us0,id=sw0-mailbox \\\n    -device cxl-upstream,bus=rp-1.0,id=us1 \\\n    -device cxl-downstream,bus=us1,port=0,chassis=0,slot=0,id=sw1.0 \\\n    -device cxl-downstream,bus=us1,port=1,chassis=0,slot=1,id=sw1.1 \\\n    -device cxl-switch-mailbox-cci,bus=us1,id=sw1-mailbox \\\n    -device cxl-upstream,bus=rp-1.1,id=us2 \\\n    -device cxl-downstream,bus=us2,port=0,chassis=0,slot=0,id=sw2.0 \\\n    -device cxl-downstream,bus=us2,port=1,chassis=0,slot=1,id=sw2.1 \\\n    -device cxl-downstream,bus=us2,port=2,chassis=0,slot=2,id=sw2.2 \\\n    -device cxl-switch-mailbox-cci,bus=us2,id=sw2-mailbox \\\n    -device cxl-type3,bus=sw0.0,persistent-memdev=mem0,lsa=lsa-mem0,id=cxl-type3-dev-0,sn=0xA9A91BD1 \\\n    -device cxl-accel,bus=sw0.1,volatile-memdev=mem-ac-0,id=cxl-ac-dev-0,sn=0x9103C3DD \\\n    -device cxl-accel,bus=sw0.2,volatile-memdev=mem-ac-1,id=cxl-ac-dev-1,sn=0x6DE6CD77 \\\n    -device cxl-type3,bus=sw1.0,persistent-memdev=mem1,lsa=lsa-mem1,id=cxl-type3-dev-1,sn=0x85408E05 \\\n    -device cxl-type3,bus=sw1.1,persistent-memdev=mem2,lsa=lsa-mem2,id=cxl-type3-dev-2,sn=0x6CA63913 \\\n    -device cxl-type3,bus=sw2.0,volatile-memdev=mem3,id=cxl-type3-dev-3,sn=0x7BC5AD02 \\\n    -device cxl-accel,bus=sw2.1,volatile-memdev=mem-ac-2,id=cxl-ac-dev-2,sn=0xAF07A505 \\\n    -device cxl-type3,bus=sw2.2,volatile-memdev=mem4,id=cxl-type3-dev-4,sn=0xBA2E0BA7 \\\n    -device cxl-type3,bus=rp-1.2,volatile-memdev=mem5,id=cxl-type3-dev-5,sn=0xB26F4E3A \\\n    -object memory-backend-file,id=mem0,size=256M,mem-path=/tmp/mem0.bin,share=on \\\n    -object memory-backend-file,id=lsa-mem0,size=16M,mem-path=/tmp/lsa-mem0.bin,share=on \\\n    -object memory-backend-ram,id=mem-ac-0,size=256M \\\n    -object memory-backend-ram,id=mem-ac-1,size=256M \\\n    -object memory-backend-file,id=mem1,size=2G,mem-path=/tmp/mem1.bin,share=on \\\n    -object memory-backend-file,id=lsa-mem1,size=8M,mem-path=/tmp/lsa-mem1.bin,share=on \\\n    -object memory-backend-file,id=mem2,size=1G,mem-path=/tmp/mem2.bin,share=on \\\n    -object memory-backend-file,id=lsa-mem2,size=16M,mem-path=/tmp/lsa-mem2.bin,share=on \\\n    -object memory-backend-ram,id=mem3,size=512M \\\n    -object memory-backend-ram,id=mem-ac-2,size=512M \\\n    -object memory-backend-ram,id=mem4,size=2G \\\n    -object memory-backend-ram,id=mem5,size=512M",
+      "validation": {
+        "isValid": true,
+        "errors": [],
+        "warnings": [],
+        "parsed": {
+          "machine": "q35,cxl=on",
+          "devices": [],
+          "objects": [],
+          "other": [],
+          "errors": []
+        }
+      }
+    },
+    {
+      "name": "Random Topology 2",
+      "passed": true,
+      "errors": [],
+      "notes": [
+        "✓ CXL machine configuration present",
+        "✓ CXL host bridge present",
+        "Generated 16 devices and 7 objects",
+        "✓ Contains CXL endpoint devices"
+      ],
+      "qemuCommand": "-M q35,cxl=on \\\n    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12 \\\n    -device pxb-cxl,bus=pcie.0,id=cxl.1,bus_nr=13 \\\n    -device cxl-rp,bus=cxl.0,port=0,id=rp-0.0,chassis=0,slot=0 \\\n    -device cxl-rp,bus=cxl.1,port=0,id=rp-1.0,chassis=1,slot=0 \\\n    -device cxl-rp,bus=cxl.1,port=1,id=rp-1.1,chassis=1,slot=1 \\\n    -device cxl-upstream,bus=rp-1.0,id=us0 \\\n    -device cxl-downstream,bus=us0,port=0,chassis=0,slot=0,id=sw0.0 \\\n    -device cxl-downstream,bus=us0,port=1,chassis=0,slot=1,id=sw0.1 \\\n    -device cxl-downstream,bus=us0,port=2,chassis=0,slot=2,id=sw0.2 \\\n    -device cxl-downstream,bus=us0,port=3,chassis=0,slot=3,id=sw0.3 \\\n    -device cxl-type3,bus=rp-1.1,persistent-memdev=mem0,lsa=lsa-mem0,id=cxl-type3-dev-0,sn=0xAF84F8A9 \\\n    -device cxl-accel,bus=sw0.0,volatile-memdev=mem-ac-0,id=cxl-ac-dev-0,sn=0x053ABAEB \\\n    -device cxl-accel,bus=sw0.1,volatile-memdev=mem-ac-1,id=cxl-ac-dev-1,sn=0x08C56B6D \\\n    -device cxl-type3,bus=sw0.2,volatile-memdev=mem1,id=cxl-type3-dev-1,sn=0x14DE0A8C \\\n    -device cxl-type3,bus=sw0.3,volatile-dc-memdev=mem2,id=cxl-type3-dev-2,num-dc-regions=1,sn=0xDBD24F21 \\\n    -device cxl-type3,bus=rp-0.0,volatile-memdev=mem3,id=cxl-type3-dev-3,sn=0xCE929F25 \\\n    -object memory-backend-file,id=mem0,size=2G,mem-path=/tmp/mem0.bin,share=on \\\n    -object memory-backend-file,id=lsa-mem0,size=16M,mem-path=/tmp/lsa-mem0.bin,share=on \\\n    -object memory-backend-ram,id=mem-ac-0,size=256M \\\n    -object memory-backend-ram,id=mem-ac-1,size=512M \\\n    -object memory-backend-ram,id=mem1,size=1G \\\n    -object memory-backend-ram,id=mem2,size=512M \\\n    -object memory-backend-ram,id=mem3,size=512M",
+      "validation": {
+        "isValid": true,
+        "errors": [],
+        "warnings": [],
+        "parsed": {
+          "machine": "q35,cxl=on",
+          "devices": [],
+          "objects": [],
+          "other": [],
+          "errors": []
+        }
+      }
+    },
+    {
+      "name": "Random Topology 3",
+      "passed": true,
+      "errors": [],
+      "notes": [
+        "✓ CXL machine configuration present",
+        "✓ CXL host bridge present",
+        "Generated 12 devices and 6 objects",
+        "✓ Contains CXL endpoint devices"
+      ],
+      "qemuCommand": "-M q35,cxl=on \\\n    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12 \\\n    -device pxb-cxl,bus=pcie.0,id=cxl.1,bus_nr=13 \\\n    -device cxl-rp,bus=cxl.0,port=0,id=rp-0.0,chassis=0,slot=0 \\\n    -device cxl-rp,bus=cxl.0,port=1,id=rp-0.1,chassis=0,slot=1 \\\n    -device cxl-rp,bus=cxl.1,port=0,id=rp-1.0,chassis=1,slot=0 \\\n    -device cxl-rp,bus=cxl.1,port=1,id=rp-1.1,chassis=1,slot=1 \\\n    -device cxl-rp,bus=cxl.1,port=2,id=rp-1.2,chassis=1,slot=2 \\\n    -device cxl-type3,bus=rp-0.0,persistent-memdev=mem0,lsa=lsa-mem0,id=cxl-type3-dev-0,sn=0x8BE9CEF3 \\\n    -device cxl-type3,bus=rp-0.1,volatile-dc-memdev=mem1,id=cxl-type3-dev-1,num-dc-regions=1,sn=0x163E2BDE \\\n    -device cxl-accel,bus=rp-1.0,volatile-memdev=mem-ac-0,id=cxl-ac-dev-0,sn=0x6724F8D7 \\\n    -device cxl-type3,bus=rp-1.1,volatile-memdev=mem2,id=cxl-type3-dev-2,sn=0xDC1A25E6 \\\n    -device cxl-type3,bus=rp-1.2,volatile-memdev=mem3,id=cxl-type3-dev-3,sn=0x558EA77E \\\n    -object memory-backend-file,id=mem0,size=512M,mem-path=/tmp/mem0.bin,share=on \\\n    -object memory-backend-file,id=lsa-mem0,size=8M,mem-path=/tmp/lsa-mem0.bin,share=on \\\n    -object memory-backend-ram,id=mem1,size=2G \\\n    -object memory-backend-ram,id=mem-ac-0,size=512M \\\n    -object memory-backend-ram,id=mem2,size=256M \\\n    -object memory-backend-ram,id=mem3,size=2G",
+      "validation": {
+        "isValid": true,
+        "errors": [],
+        "warnings": [],
+        "parsed": {
+          "machine": "q35,cxl=on",
+          "devices": [],
+          "objects": [],
+          "other": [],
+          "errors": []
+        }
+      }
+    },
+    {
+      "name": "Random Topology 4",
+      "passed": true,
+      "errors": [],
+      "notes": [
+        "✓ CXL machine configuration present",
+        "✓ CXL host bridge present",
+        "Generated 5 devices and 2 objects",
+        "✓ Contains CXL endpoint devices"
+      ],
+      "qemuCommand": "-M q35,cxl=on \\\n    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12 \\\n    -device cxl-rp,bus=cxl.0,port=0,id=rp-0.0,chassis=0,slot=0 \\\n    -device cxl-rp,bus=cxl.0,port=1,id=rp-0.1,chassis=0,slot=1 \\\n    -device cxl-type3,bus=rp-0.0,volatile-dc-memdev=mem0,id=cxl-type3-dev-0,num-dc-regions=1,sn=0x317CFB24 \\\n    -device cxl-type3,bus=rp-0.1,volatile-memdev=mem1,id=cxl-type3-dev-1,sn=0xCFA1B3FB \\\n    -object memory-backend-ram,id=mem0,size=2G \\\n    -object memory-backend-ram,id=mem1,size=256M",
+      "validation": {
+        "isValid": true,
+        "errors": [],
+        "warnings": [],
+        "parsed": {
+          "machine": "q35,cxl=on",
+          "devices": [],
+          "objects": [],
+          "other": [],
+          "errors": []
+        }
+      }
+    },
+    {
+      "name": "Random Topology 5",
+      "passed": true,
+      "errors": [],
+      "notes": [
+        "✓ CXL machine configuration present",
+        "✓ CXL host bridge present",
+        "Generated 16 devices and 8 objects",
+        "✓ Contains CXL endpoint devices"
+      ],
+      "qemuCommand": "-M q35,cxl=on \\\n    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12 \\\n    -device pxb-cxl,bus=pcie.0,id=cxl.1,bus_nr=13 \\\n    -device cxl-rp,bus=cxl.0,port=0,id=rp-0.0,chassis=0,slot=0 \\\n    -device cxl-rp,bus=cxl.0,port=1,id=rp-0.1,chassis=0,slot=1 \\\n    -device cxl-rp,bus=cxl.1,port=0,id=rp-1.0,chassis=1,slot=0 \\\n    -device cxl-rp,bus=cxl.1,port=1,id=rp-1.1,chassis=1,slot=1 \\\n    -device cxl-rp,bus=cxl.1,port=2,id=rp-1.2,chassis=1,slot=2 \\\n    -device cxl-accel,bus=rp-0.0,volatile-memdev=mem-ac-0,id=cxl-ac-dev-0,sn=0xF93F4DBD \\\n    -device cxl-type3,bus=rp-0.1,volatile-memdev=mem0,id=cxl-type3-dev-0,sn=0xD9DF65E5 \\\n    -device cxl-upstream,bus=rp-1.0,id=us0 \\\n    -device cxl-downstream,bus=us0,port=0,chassis=0,slot=0,id=sw0.0 \\\n    -device cxl-downstream,bus=us0,port=1,chassis=0,slot=1,id=sw0.1 \\\n    -device cxl-accel,bus=rp-1.1,volatile-memdev=mem-ac-1,id=cxl-ac-dev-1,sn=0xE80007E5 \\\n    -device cxl-type3,bus=rp-1.2,persistent-memdev=mem1,lsa=lsa-mem1,id=cxl-type3-dev-1,sn=0x3D34F9FD \\\n    -device cxl-type3,bus=sw0.0,persistent-memdev=mem2,lsa=lsa-mem2,id=cxl-type3-dev-2,sn=0x78F18358 \\\n    -device cxl-type3,bus=sw0.1,volatile-memdev=mem3,id=cxl-type3-dev-3,sn=0x3C642C73 \\\n    -object memory-backend-ram,id=mem-ac-0,size=256M \\\n    -object memory-backend-ram,id=mem0,size=1G \\\n    -object memory-backend-ram,id=mem-ac-1,size=256M \\\n    -object memory-backend-file,id=mem1,size=512M,mem-path=/tmp/mem1.bin,share=on \\\n    -object memory-backend-file,id=lsa-mem1,size=16M,mem-path=/tmp/lsa-mem1.bin,share=on \\\n    -object memory-backend-file,id=mem2,size=2G,mem-path=/tmp/mem2.bin,share=on \\\n    -object memory-backend-file,id=lsa-mem2,size=8M,mem-path=/tmp/lsa-mem2.bin,share=on \\\n    -object memory-backend-ram,id=mem3,size=512M",
+      "validation": {
+        "isValid": true,
+        "errors": [],
+        "warnings": [],
+        "parsed": {
+          "machine": "q35,cxl=on",
+          "devices": [],
+          "objects": [],
+          "other": [],
+          "errors": []
+        }
+      }
+    },
+    {
+      "name": "Manual Component Addition",
+      "passed": true,
+      "errors": [],
+      "notes": [
+        "✓ CXL machine configuration present",
+        "✓ CXL host bridge present"
+      ],
+      "qemuCommand": "-M q35,cxl=on \\\n    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12",
+      "validation": {
+        "isValid": true,
+        "errors": [],
+        "warnings": [],
+        "parsed": {
+          "machine": "q35,cxl=on",
+          "devices": [],
+          "objects": [],
+          "other": [],
+          "errors": []
+        }
+      }
+    },
+    {
+      "name": "Memory Window Configuration",
+      "passed": true,
+      "errors": [],
+      "notes": [
+        "✓ CXL machine configuration present",
+        "✓ CXL host bridge present",
+        "✓ Memory window configured successfully"
+      ],
+      "qemuCommand": "-M q35,cxl=on,cxl-fmw.0.size=4G,cxl-fmw.0.targets.0=cxl.0,cxl-fmw.0.interleave-granularity=256 \\\n    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12",
+      "validation": {
+        "isValid": true,
+        "errors": [],
+        "warnings": [],
+        "parsed": {
+          "machine": "q35,cxl=on,cxl-fmw.0.size=4G,cxl-fmw.0.targets.0=cxl.0,cxl-fmw.0.interleave-granularity=256",
+          "devices": [],
+          "objects": [],
+          "other": [],
+          "errors": []
+        }
+      }
+    },
+    {
+      "name": "Component Properties",
+      "passed": true,
+      "errors": [],
+      "notes": [
+        "✓ CXL machine configuration present",
+        "✓ CXL host bridge present",
+        "✓ Found 1 valid serial numbers",
+        "Memory references: 1, Memory backends: 2",
+        "✓ Found 3 bus references"
+      ],
+      "qemuCommand": "-M q35,cxl=on \\\n    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12 \\\n    -device cxl-rp,bus=cxl.0,port=0,id=rp-0.0,chassis=0,slot=0 \\\n    -device cxl-type3,bus=rp-0.0,persistent-memdev=mem0,lsa=lsa-mem0,id=cxl-type3-dev-0,sn=0x19BFCEBA \\\n    -object memory-backend-file,id=mem0,size=2G,mem-path=/tmp/mem0.bin,share=on \\\n    -object memory-backend-file,id=lsa-mem0,size=8M,mem-path=/tmp/lsa-mem0.bin,share=on",
+      "validation": {
+        "isValid": true,
+        "errors": [],
+        "warnings": [],
+        "parsed": {
+          "machine": "q35,cxl=on",
+          "devices": [],
+          "objects": [],
+          "other": [],
+          "errors": []
+        }
+      }
+    }
+  ]
+}

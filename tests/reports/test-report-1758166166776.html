@@ -1,0 +1,643 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CXL Canvas Test Report</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6; 
+            margin: 0; 
+            padding: 20px; 
+            background: #f5f5f5; 
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+        }
+        .header { 
+            border-bottom: 2px solid #e5e7eb; 
+            padding-bottom: 20px; 
+            margin-bottom: 30px; 
+        }
+        .status { 
+            display: inline-block; 
+            padding: 8px 16px; 
+            border-radius: 4px; 
+            color: white; 
+            font-weight: bold; 
+            background: #10b981; 
+        }
+        .summary { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 20px; 
+            margin-bottom: 30px; 
+        }
+        .metric { 
+            background: #f9fafb; 
+            padding: 20px; 
+            border-radius: 6px; 
+            text-align: center; 
+        }
+        .metric-value { 
+            font-size: 2em; 
+            font-weight: bold; 
+            color: #374151; 
+        }
+        .metric-label { 
+            color: #6b7280; 
+            margin-top: 5px; 
+        }
+        .test-item { 
+            border: 1px solid #e5e7eb; 
+            margin-bottom: 20px; 
+            border-radius: 6px; 
+        }
+        .test-header { 
+            padding: 15px 20px; 
+            background: #f9fafb; 
+            border-bottom: 1px solid #e5e7eb; 
+            cursor: pointer; 
+        }
+        .test-header:hover { 
+            background: #f3f4f6; 
+        }
+        .test-title { 
+            font-weight: bold; 
+            color: #374151; 
+        }
+        .test-description { 
+            color: #6b7280; 
+            font-size: 0.9em; 
+            margin-top: 5px; 
+        }
+        .test-status { 
+            float: right; 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            font-size: 0.8em; 
+            font-weight: bold; 
+        }
+        .test-status.passed { 
+            background: #d1fae5; 
+            color: #065f46; 
+        }
+        .test-status.failed { 
+            background: #fee2e2; 
+            color: #991b1b; 
+        }
+        .test-details { 
+            padding: 20px; 
+            display: none; 
+        }
+        .test-details.active { 
+            display: block; 
+        }
+        .errors { 
+            background: #fef2f2; 
+            border: 1px solid #fecaca; 
+            border-radius: 4px; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+        }
+        .warnings { 
+            background: #fffbeb; 
+            border: 1px solid #fed7aa; 
+            border-radius: 4px; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+        }
+        .qemu-command { 
+            background: #1f2937; 
+            color: #f9fafb; 
+            padding: 15px; 
+            border-radius: 4px; 
+            font-family: 'Monaco', 'Consolas', monospace; 
+            font-size: 0.85em; 
+            white-space: pre-wrap; 
+            overflow-x: auto; 
+        }
+        .footer { 
+            margin-top: 40px; 
+            padding-top: 20px; 
+            border-top: 1px solid #e5e7eb; 
+            text-align: center; 
+            color: #6b7280; 
+            font-size: 0.9em; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CXL Canvas Test Report</h1>
+            <div class="status">PASSED</div>
+            <p>Generated: 2025-09-18T03:29:26.776Z</p>
+        </div>
+
+        <div class="summary">
+            <div class="metric">
+                <div class="metric-value">9</div>
+                <div class="metric-label">Total Tests</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" style="color: #10b981">9</div>
+                <div class="metric-label">Passed</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" style="color: #ef4444">0</div>
+                <div class="metric-label">Failed</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value">100.0%</div>
+                <div class="metric-label">Success Rate</div>
+            </div>
+        </div>
+
+        <h2>Test Results</h2>
+        
+            <div class="test-item">
+                <div class="test-header" onclick="toggleDetails(0)">
+                    <div class="test-status passed">
+                        PASSED
+                    </div>
+                    <div class="test-title">Default Topology</div>
+                    <div class="test-description">Realistic test scenario</div>
+                </div>
+                <div class="test-details" id="details-0">
+                    
+                    
+                    <h4>Generated QEMU Command:</h4>
+                    <div class="qemu-command">-M q35,cxl=on \
+    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12</div>
+                </div>
+            </div>
+        
+            <div class="test-item">
+                <div class="test-header" onclick="toggleDetails(1)">
+                    <div class="test-status passed">
+                        PASSED
+                    </div>
+                    <div class="test-title">Random Topology 1</div>
+                    <div class="test-description">Realistic test scenario</div>
+                </div>
+                <div class="test-details" id="details-1">
+                    
+                    
+                    <h4>Generated QEMU Command:</h4>
+                    <div class="qemu-command">-M q35,cxl=on \
+    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12 \
+    -device cxl-rp,bus=cxl.0,port=0,id=rp-0.0,chassis=0,slot=0 \
+    -device cxl-accel,bus=rp-0.0,volatile-memdev=mem-ac-0,id=cxl-ac-dev-0,sn=0x9E9C4428 \
+    -object memory-backend-ram,id=mem-ac-0,size=512M</div>
+                </div>
+            </div>
+        
+            <div class="test-item">
+                <div class="test-header" onclick="toggleDetails(2)">
+                    <div class="test-status passed">
+                        PASSED
+                    </div>
+                    <div class="test-title">Random Topology 2</div>
+                    <div class="test-description">Realistic test scenario</div>
+                </div>
+                <div class="test-details" id="details-2">
+                    
+                    
+                    <h4>Generated QEMU Command:</h4>
+                    <div class="qemu-command">-M q35,cxl=on \
+    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12 \
+    -device pxb-cxl,bus=pcie.0,id=cxl.1,bus_nr=13 \
+    -device cxl-rp,bus=cxl.0,port=0,id=rp-0.0,chassis=0,slot=0 \
+    -device cxl-rp,bus=cxl.0,port=1,id=rp-0.1,chassis=0,slot=1 \
+    -device cxl-rp,bus=cxl.1,port=0,id=rp-1.0,chassis=1,slot=0 \
+    -device cxl-rp,bus=cxl.1,port=1,id=rp-1.1,chassis=1,slot=1 \
+    -device cxl-rp,bus=cxl.1,port=2,id=rp-1.2,chassis=1,slot=2 \
+    -device cxl-rp,bus=cxl.1,port=3,id=rp-1.3,chassis=1,slot=3 \
+    -device cxl-upstream,bus=rp-0.0,id=us0 \
+    -device cxl-downstream,bus=us0,port=0,chassis=0,slot=0,id=sw0.0 \
+    -device cxl-downstream,bus=us0,port=1,chassis=0,slot=1,id=sw0.1 \
+    -device cxl-downstream,bus=us0,port=2,chassis=0,slot=2,id=sw0.2 \
+    -device cxl-switch-mailbox-cci,bus=us0,id=sw0-mailbox \
+    -device cxl-upstream,bus=rp-0.1,id=us1 \
+    -device cxl-downstream,bus=us1,port=0,chassis=0,slot=0,id=sw1.0 \
+    -device cxl-downstream,bus=us1,port=1,chassis=0,slot=1,id=sw1.1 \
+    -device cxl-downstream,bus=us1,port=2,chassis=0,slot=2,id=sw1.2 \
+    -device cxl-downstream,bus=us1,port=3,chassis=0,slot=3,id=sw1.3 \
+    -device cxl-switch-mailbox-cci,bus=us1,id=sw1-mailbox \
+    -device cxl-type3,bus=rp-1.0,persistent-memdev=mem0,lsa=lsa-mem0,id=cxl-type3-dev-0,sn=0x938E9C79 \
+    -device cxl-accel,bus=rp-1.3,volatile-memdev=mem-ac-0,id=cxl-ac-dev-0,sn=0x3A5D2089 \
+    -device cxl-type3,bus=sw0.0,volatile-memdev=mem1,id=cxl-type3-dev-1,sn=0x3AB2E8CE \
+    -device cxl-type3,bus=sw0.2,persistent-memdev=mem2,lsa=lsa-mem2,id=cxl-type3-dev-2,sn=0x5FEB169D \
+    -device cxl-type3,bus=sw1.0,persistent-memdev=mem3,lsa=lsa-mem3,id=cxl-type3-dev-3,sn=0x1F2CEDD5 \
+    -device cxl-type3,bus=sw1.1,volatile-dc-memdev=mem4,id=cxl-type3-dev-4,num-dc-regions=1,sn=0x6871C5F1 \
+    -device cxl-type3,bus=sw1.3,persistent-memdev=mem5,lsa=lsa-mem5,id=cxl-type3-dev-5,sn=0x146F3CF6 \
+    -device cxl-type3,bus=rp-1.1,volatile-memdev=mem6,id=cxl-type3-dev-6,sn=0x70B0B002 \
+    -device cxl-type3,bus=rp-1.2,volatile-memdev=mem7,id=cxl-type3-dev-7,sn=0x67E4FDED \
+    -device cxl-type3,bus=sw0.1,volatile-memdev=mem8,id=cxl-type3-dev-8,sn=0x02979E71 \
+    -device cxl-type3,bus=sw1.2,volatile-memdev=mem9,id=cxl-type3-dev-9,sn=0x7BEFC668 \
+    -object memory-backend-file,id=mem0,size=2G,mem-path=/tmp/mem0.bin,share=on \
+    -object memory-backend-file,id=lsa-mem0,size=8M,mem-path=/tmp/lsa-mem0.bin,share=on \
+    -object memory-backend-ram,id=mem-ac-0,size=512M \
+    -object memory-backend-ram,id=mem1,size=256M \
+    -object memory-backend-file,id=mem2,size=512M,mem-path=/tmp/mem2.bin,share=on \
+    -object memory-backend-file,id=lsa-mem2,size=16M,mem-path=/tmp/lsa-mem2.bin,share=on \
+    -object memory-backend-file,id=mem3,size=1G,mem-path=/tmp/mem3.bin,share=on \
+    -object memory-backend-file,id=lsa-mem3,size=16M,mem-path=/tmp/lsa-mem3.bin,share=on \
+    -object memory-backend-ram,id=mem4,size=1G \
+    -object memory-backend-file,id=mem5,size=1G,mem-path=/tmp/mem5.bin,share=on \
+    -object memory-backend-file,id=lsa-mem5,size=16M,mem-path=/tmp/lsa-mem5.bin,share=on \
+    -object memory-backend-ram,id=mem6,size=2G \
+    -object memory-backend-ram,id=mem7,size=512M \
+    -object memory-backend-ram,id=mem8,size=512M \
+    -object memory-backend-ram,id=mem9,size=2G</div>
+                </div>
+            </div>
+        
+            <div class="test-item">
+                <div class="test-header" onclick="toggleDetails(3)">
+                    <div class="test-status passed">
+                        PASSED
+                    </div>
+                    <div class="test-title">Random Topology 3</div>
+                    <div class="test-description">Realistic test scenario</div>
+                </div>
+                <div class="test-details" id="details-3">
+                    
+                    
+                    <h4>Generated QEMU Command:</h4>
+                    <div class="qemu-command">-M q35,cxl=on \
+    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12 \
+    -device pxb-cxl,bus=pcie.0,id=cxl.1,bus_nr=13 \
+    -device cxl-rp,bus=cxl.0,port=0,id=rp-0.0,chassis=0,slot=0 \
+    -device cxl-rp,bus=cxl.0,port=1,id=rp-0.1,chassis=0,slot=1 \
+    -device cxl-rp,bus=cxl.1,port=0,id=rp-1.0,chassis=1,slot=0 \
+    -device cxl-rp,bus=cxl.1,port=1,id=rp-1.1,chassis=1,slot=1 \
+    -device cxl-rp,bus=cxl.1,port=2,id=rp-1.2,chassis=1,slot=2 \
+    -device cxl-rp,bus=cxl.1,port=3,id=rp-1.3,chassis=1,slot=3 \
+    -device cxl-upstream,bus=rp-0.0,id=us0 \
+    -device cxl-downstream,bus=us0,port=0,chassis=0,slot=0,id=sw0.0 \
+    -device cxl-downstream,bus=us0,port=1,chassis=0,slot=1,id=sw0.1 \
+    -device cxl-downstream,bus=us0,port=2,chassis=0,slot=2,id=sw0.2 \
+    -device cxl-switch-mailbox-cci,bus=us0,id=sw0-mailbox \
+    -device cxl-upstream,bus=rp-0.1,id=us1 \
+    -device cxl-downstream,bus=us1,port=0,chassis=0,slot=0,id=sw1.0 \
+    -device cxl-downstream,bus=us1,port=1,chassis=0,slot=1,id=sw1.1 \
+    -device cxl-downstream,bus=us1,port=2,chassis=0,slot=2,id=sw1.2 \
+    -device cxl-downstream,bus=us1,port=3,chassis=0,slot=3,id=sw1.3 \
+    -device cxl-switch-mailbox-cci,bus=us1,id=sw1-mailbox \
+    -device cxl-type3,bus=rp-1.0,persistent-memdev=mem0,lsa=lsa-mem0,id=cxl-type3-dev-0,sn=0x938E9C79 \
+    -device cxl-accel,bus=rp-1.3,volatile-memdev=mem-ac-0,id=cxl-ac-dev-0,sn=0x3A5D2089 \
+    -device cxl-type3,bus=sw0.0,volatile-memdev=mem1,id=cxl-type3-dev-1,sn=0x3AB2E8CE \
+    -device cxl-type3,bus=sw0.2,persistent-memdev=mem2,lsa=lsa-mem2,id=cxl-type3-dev-2,sn=0x5FEB169D \
+    -device cxl-type3,bus=sw1.0,persistent-memdev=mem3,lsa=lsa-mem3,id=cxl-type3-dev-3,sn=0x1F2CEDD5 \
+    -device cxl-type3,bus=sw1.1,volatile-dc-memdev=mem4,id=cxl-type3-dev-4,num-dc-regions=1,sn=0x6871C5F1 \
+    -device cxl-type3,bus=sw1.3,persistent-memdev=mem5,lsa=lsa-mem5,id=cxl-type3-dev-5,sn=0x146F3CF6 \
+    -device cxl-type3,bus=rp-1.1,volatile-memdev=mem6,id=cxl-type3-dev-6,sn=0x70B0B002 \
+    -device cxl-type3,bus=rp-1.2,volatile-memdev=mem7,id=cxl-type3-dev-7,sn=0x67E4FDED \
+    -device cxl-type3,bus=sw0.1,volatile-memdev=mem8,id=cxl-type3-dev-8,sn=0x02979E71 \
+    -device cxl-type3,bus=sw1.2,volatile-memdev=mem9,id=cxl-type3-dev-9,sn=0x7BEFC668 \
+    -object memory-backend-file,id=mem0,size=2G,mem-path=/tmp/mem0.bin,share=on \
+    -object memory-backend-file,id=lsa-mem0,size=8M,mem-path=/tmp/lsa-mem0.bin,share=on \
+    -object memory-backend-ram,id=mem-ac-0,size=512M \
+    -object memory-backend-ram,id=mem1,size=256M \
+    -object memory-backend-file,id=mem2,size=512M,mem-path=/tmp/mem2.bin,share=on \
+    -object memory-backend-file,id=lsa-mem2,size=16M,mem-path=/tmp/lsa-mem2.bin,share=on \
+    -object memory-backend-file,id=mem3,size=1G,mem-path=/tmp/mem3.bin,share=on \
+    -object memory-backend-file,id=lsa-mem3,size=16M,mem-path=/tmp/lsa-mem3.bin,share=on \
+    -object memory-backend-ram,id=mem4,size=1G \
+    -object memory-backend-file,id=mem5,size=1G,mem-path=/tmp/mem5.bin,share=on \
+    -object memory-backend-file,id=lsa-mem5,size=16M,mem-path=/tmp/lsa-mem5.bin,share=on \
+    -object memory-backend-ram,id=mem6,size=2G \
+    -object memory-backend-ram,id=mem7,size=512M \
+    -object memory-backend-ram,id=mem8,size=512M \
+    -object memory-backend-ram,id=mem9,size=2G</div>
+                </div>
+            </div>
+        
+            <div class="test-item">
+                <div class="test-header" onclick="toggleDetails(4)">
+                    <div class="test-status passed">
+                        PASSED
+                    </div>
+                    <div class="test-title">Random Topology 4</div>
+                    <div class="test-description">Realistic test scenario</div>
+                </div>
+                <div class="test-details" id="details-4">
+                    
+                    
+                    <h4>Generated QEMU Command:</h4>
+                    <div class="qemu-command">-M q35,cxl=on \
+    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12 \
+    -device pxb-cxl,bus=pcie.0,id=cxl.1,bus_nr=13 \
+    -device cxl-rp,bus=cxl.0,port=0,id=rp-0.0,chassis=0,slot=0 \
+    -device cxl-rp,bus=cxl.0,port=1,id=rp-0.1,chassis=0,slot=1 \
+    -device cxl-rp,bus=cxl.1,port=0,id=rp-1.0,chassis=1,slot=0 \
+    -device cxl-rp,bus=cxl.1,port=1,id=rp-1.1,chassis=1,slot=1 \
+    -device cxl-rp,bus=cxl.1,port=2,id=rp-1.2,chassis=1,slot=2 \
+    -device cxl-rp,bus=cxl.1,port=3,id=rp-1.3,chassis=1,slot=3 \
+    -device cxl-upstream,bus=rp-0.0,id=us0 \
+    -device cxl-downstream,bus=us0,port=0,chassis=0,slot=0,id=sw0.0 \
+    -device cxl-downstream,bus=us0,port=1,chassis=0,slot=1,id=sw0.1 \
+    -device cxl-downstream,bus=us0,port=2,chassis=0,slot=2,id=sw0.2 \
+    -device cxl-switch-mailbox-cci,bus=us0,id=sw0-mailbox \
+    -device cxl-upstream,bus=rp-0.1,id=us1 \
+    -device cxl-downstream,bus=us1,port=0,chassis=0,slot=0,id=sw1.0 \
+    -device cxl-downstream,bus=us1,port=1,chassis=0,slot=1,id=sw1.1 \
+    -device cxl-downstream,bus=us1,port=2,chassis=0,slot=2,id=sw1.2 \
+    -device cxl-downstream,bus=us1,port=3,chassis=0,slot=3,id=sw1.3 \
+    -device cxl-switch-mailbox-cci,bus=us1,id=sw1-mailbox \
+    -device cxl-type3,bus=rp-1.0,persistent-memdev=mem0,lsa=lsa-mem0,id=cxl-type3-dev-0,sn=0x938E9C79 \
+    -device cxl-accel,bus=rp-1.3,volatile-memdev=mem-ac-0,id=cxl-ac-dev-0,sn=0x3A5D2089 \
+    -device cxl-type3,bus=sw0.0,volatile-memdev=mem1,id=cxl-type3-dev-1,sn=0x3AB2E8CE \
+    -device cxl-type3,bus=sw0.2,persistent-memdev=mem2,lsa=lsa-mem2,id=cxl-type3-dev-2,sn=0x5FEB169D \
+    -device cxl-type3,bus=sw1.0,persistent-memdev=mem3,lsa=lsa-mem3,id=cxl-type3-dev-3,sn=0x1F2CEDD5 \
+    -device cxl-type3,bus=sw1.1,volatile-dc-memdev=mem4,id=cxl-type3-dev-4,num-dc-regions=1,sn=0x6871C5F1 \
+    -device cxl-type3,bus=sw1.3,persistent-memdev=mem5,lsa=lsa-mem5,id=cxl-type3-dev-5,sn=0x146F3CF6 \
+    -device cxl-type3,bus=rp-1.1,volatile-memdev=mem6,id=cxl-type3-dev-6,sn=0x70B0B002 \
+    -device cxl-type3,bus=rp-1.2,volatile-memdev=mem7,id=cxl-type3-dev-7,sn=0x67E4FDED \
+    -device cxl-type3,bus=sw0.1,volatile-memdev=mem8,id=cxl-type3-dev-8,sn=0x02979E71 \
+    -device cxl-type3,bus=sw1.2,volatile-memdev=mem9,id=cxl-type3-dev-9,sn=0x7BEFC668 \
+    -object memory-backend-file,id=mem0,size=2G,mem-path=/tmp/mem0.bin,share=on \
+    -object memory-backend-file,id=lsa-mem0,size=8M,mem-path=/tmp/lsa-mem0.bin,share=on \
+    -object memory-backend-ram,id=mem-ac-0,size=512M \
+    -object memory-backend-ram,id=mem1,size=256M \
+    -object memory-backend-file,id=mem2,size=512M,mem-path=/tmp/mem2.bin,share=on \
+    -object memory-backend-file,id=lsa-mem2,size=16M,mem-path=/tmp/lsa-mem2.bin,share=on \
+    -object memory-backend-file,id=mem3,size=1G,mem-path=/tmp/mem3.bin,share=on \
+    -object memory-backend-file,id=lsa-mem3,size=16M,mem-path=/tmp/lsa-mem3.bin,share=on \
+    -object memory-backend-ram,id=mem4,size=1G \
+    -object memory-backend-file,id=mem5,size=1G,mem-path=/tmp/mem5.bin,share=on \
+    -object memory-backend-file,id=lsa-mem5,size=16M,mem-path=/tmp/lsa-mem5.bin,share=on \
+    -object memory-backend-ram,id=mem6,size=2G \
+    -object memory-backend-ram,id=mem7,size=512M \
+    -object memory-backend-ram,id=mem8,size=512M \
+    -object memory-backend-ram,id=mem9,size=2G</div>
+                </div>
+            </div>
+        
+            <div class="test-item">
+                <div class="test-header" onclick="toggleDetails(5)">
+                    <div class="test-status passed">
+                        PASSED
+                    </div>
+                    <div class="test-title">Random Topology 5</div>
+                    <div class="test-description">Realistic test scenario</div>
+                </div>
+                <div class="test-details" id="details-5">
+                    
+                    
+                    <h4>Generated QEMU Command:</h4>
+                    <div class="qemu-command">-M q35,cxl=on \
+    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12 \
+    -device pxb-cxl,bus=pcie.0,id=cxl.1,bus_nr=13 \
+    -device cxl-rp,bus=cxl.0,port=0,id=rp-0.0,chassis=0,slot=0 \
+    -device cxl-rp,bus=cxl.0,port=1,id=rp-0.1,chassis=0,slot=1 \
+    -device cxl-rp,bus=cxl.1,port=0,id=rp-1.0,chassis=1,slot=0 \
+    -device cxl-rp,bus=cxl.1,port=1,id=rp-1.1,chassis=1,slot=1 \
+    -device cxl-rp,bus=cxl.1,port=2,id=rp-1.2,chassis=1,slot=2 \
+    -device cxl-rp,bus=cxl.1,port=3,id=rp-1.3,chassis=1,slot=3 \
+    -device cxl-upstream,bus=rp-0.0,id=us0 \
+    -device cxl-downstream,bus=us0,port=0,chassis=0,slot=0,id=sw0.0 \
+    -device cxl-downstream,bus=us0,port=1,chassis=0,slot=1,id=sw0.1 \
+    -device cxl-downstream,bus=us0,port=2,chassis=0,slot=2,id=sw0.2 \
+    -device cxl-switch-mailbox-cci,bus=us0,id=sw0-mailbox \
+    -device cxl-upstream,bus=rp-0.1,id=us1 \
+    -device cxl-downstream,bus=us1,port=0,chassis=0,slot=0,id=sw1.0 \
+    -device cxl-downstream,bus=us1,port=1,chassis=0,slot=1,id=sw1.1 \
+    -device cxl-downstream,bus=us1,port=2,chassis=0,slot=2,id=sw1.2 \
+    -device cxl-downstream,bus=us1,port=3,chassis=0,slot=3,id=sw1.3 \
+    -device cxl-switch-mailbox-cci,bus=us1,id=sw1-mailbox \
+    -device cxl-type3,bus=rp-1.0,persistent-memdev=mem0,lsa=lsa-mem0,id=cxl-type3-dev-0,sn=0x938E9C79 \
+    -device cxl-accel,bus=rp-1.3,volatile-memdev=mem-ac-0,id=cxl-ac-dev-0,sn=0x3A5D2089 \
+    -device cxl-type3,bus=sw0.0,volatile-memdev=mem1,id=cxl-type3-dev-1,sn=0x3AB2E8CE \
+    -device cxl-type3,bus=sw0.2,persistent-memdev=mem2,lsa=lsa-mem2,id=cxl-type3-dev-2,sn=0x5FEB169D \
+    -device cxl-type3,bus=sw1.0,persistent-memdev=mem3,lsa=lsa-mem3,id=cxl-type3-dev-3,sn=0x1F2CEDD5 \
+    -device cxl-type3,bus=sw1.1,volatile-dc-memdev=mem4,id=cxl-type3-dev-4,num-dc-regions=1,sn=0x6871C5F1 \
+    -device cxl-type3,bus=sw1.3,persistent-memdev=mem5,lsa=lsa-mem5,id=cxl-type3-dev-5,sn=0x146F3CF6 \
+    -device cxl-type3,bus=rp-1.1,volatile-memdev=mem6,id=cxl-type3-dev-6,sn=0x70B0B002 \
+    -device cxl-type3,bus=rp-1.2,volatile-memdev=mem7,id=cxl-type3-dev-7,sn=0x67E4FDED \
+    -device cxl-type3,bus=sw0.1,volatile-memdev=mem8,id=cxl-type3-dev-8,sn=0x02979E71 \
+    -device cxl-type3,bus=sw1.2,volatile-memdev=mem9,id=cxl-type3-dev-9,sn=0x7BEFC668 \
+    -object memory-backend-file,id=mem0,size=2G,mem-path=/tmp/mem0.bin,share=on \
+    -object memory-backend-file,id=lsa-mem0,size=8M,mem-path=/tmp/lsa-mem0.bin,share=on \
+    -object memory-backend-ram,id=mem-ac-0,size=512M \
+    -object memory-backend-ram,id=mem1,size=256M \
+    -object memory-backend-file,id=mem2,size=512M,mem-path=/tmp/mem2.bin,share=on \
+    -object memory-backend-file,id=lsa-mem2,size=16M,mem-path=/tmp/lsa-mem2.bin,share=on \
+    -object memory-backend-file,id=mem3,size=1G,mem-path=/tmp/mem3.bin,share=on \
+    -object memory-backend-file,id=lsa-mem3,size=16M,mem-path=/tmp/lsa-mem3.bin,share=on \
+    -object memory-backend-ram,id=mem4,size=1G \
+    -object memory-backend-file,id=mem5,size=1G,mem-path=/tmp/mem5.bin,share=on \
+    -object memory-backend-file,id=lsa-mem5,size=16M,mem-path=/tmp/lsa-mem5.bin,share=on \
+    -object memory-backend-ram,id=mem6,size=2G \
+    -object memory-backend-ram,id=mem7,size=512M \
+    -object memory-backend-ram,id=mem8,size=512M \
+    -object memory-backend-ram,id=mem9,size=2G</div>
+                </div>
+            </div>
+        
+            <div class="test-item">
+                <div class="test-header" onclick="toggleDetails(6)">
+                    <div class="test-status passed">
+                        PASSED
+                    </div>
+                    <div class="test-title">Manual Component Addition</div>
+                    <div class="test-description">Realistic test scenario</div>
+                </div>
+                <div class="test-details" id="details-6">
+                    
+                    
+                    <h4>Generated QEMU Command:</h4>
+                    <div class="qemu-command">-M q35,cxl=on \
+    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12 \
+    -device pxb-cxl,bus=pcie.0,id=cxl.1,bus_nr=13 \
+    -device cxl-rp,bus=cxl.0,port=0,id=rp-0.0,chassis=0,slot=0 \
+    -device cxl-rp,bus=cxl.0,port=1,id=rp-0.1,chassis=0,slot=1 \
+    -device cxl-rp,bus=cxl.1,port=0,id=rp-1.0,chassis=1,slot=0 \
+    -device cxl-rp,bus=cxl.1,port=1,id=rp-1.1,chassis=1,slot=1 \
+    -device cxl-rp,bus=cxl.1,port=2,id=rp-1.2,chassis=1,slot=2 \
+    -device cxl-rp,bus=cxl.1,port=3,id=rp-1.3,chassis=1,slot=3 \
+    -device cxl-upstream,bus=rp-0.0,id=us0 \
+    -device cxl-downstream,bus=us0,port=0,chassis=0,slot=0,id=sw0.0 \
+    -device cxl-downstream,bus=us0,port=1,chassis=0,slot=1,id=sw0.1 \
+    -device cxl-downstream,bus=us0,port=2,chassis=0,slot=2,id=sw0.2 \
+    -device cxl-switch-mailbox-cci,bus=us0,id=sw0-mailbox \
+    -device cxl-upstream,bus=rp-0.1,id=us1 \
+    -device cxl-downstream,bus=us1,port=0,chassis=0,slot=0,id=sw1.0 \
+    -device cxl-downstream,bus=us1,port=1,chassis=0,slot=1,id=sw1.1 \
+    -device cxl-downstream,bus=us1,port=2,chassis=0,slot=2,id=sw1.2 \
+    -device cxl-downstream,bus=us1,port=3,chassis=0,slot=3,id=sw1.3 \
+    -device cxl-switch-mailbox-cci,bus=us1,id=sw1-mailbox \
+    -device cxl-type3,bus=rp-1.0,persistent-memdev=mem0,lsa=lsa-mem0,id=cxl-type3-dev-0,sn=0x938E9C79 \
+    -device cxl-accel,bus=rp-1.3,volatile-memdev=mem-ac-0,id=cxl-ac-dev-0,sn=0x3A5D2089 \
+    -device cxl-type3,bus=sw0.0,volatile-memdev=mem1,id=cxl-type3-dev-1,sn=0x3AB2E8CE \
+    -device cxl-type3,bus=sw0.2,persistent-memdev=mem2,lsa=lsa-mem2,id=cxl-type3-dev-2,sn=0x5FEB169D \
+    -device cxl-type3,bus=sw1.0,persistent-memdev=mem3,lsa=lsa-mem3,id=cxl-type3-dev-3,sn=0x1F2CEDD5 \
+    -device cxl-type3,bus=sw1.1,volatile-dc-memdev=mem4,id=cxl-type3-dev-4,num-dc-regions=1,sn=0x6871C5F1 \
+    -device cxl-type3,bus=sw1.3,persistent-memdev=mem5,lsa=lsa-mem5,id=cxl-type3-dev-5,sn=0x146F3CF6 \
+    -device cxl-type3,bus=rp-1.1,volatile-memdev=mem6,id=cxl-type3-dev-6,sn=0x70B0B002 \
+    -device cxl-type3,bus=rp-1.2,volatile-memdev=mem7,id=cxl-type3-dev-7,sn=0x67E4FDED \
+    -device cxl-type3,bus=sw0.1,volatile-memdev=mem8,id=cxl-type3-dev-8,sn=0x02979E71 \
+    -device cxl-type3,bus=sw1.2,volatile-memdev=mem9,id=cxl-type3-dev-9,sn=0x7BEFC668 \
+    -object memory-backend-file,id=mem0,size=2G,mem-path=/tmp/mem0.bin,share=on \
+    -object memory-backend-file,id=lsa-mem0,size=8M,mem-path=/tmp/lsa-mem0.bin,share=on \
+    -object memory-backend-ram,id=mem-ac-0,size=512M \
+    -object memory-backend-ram,id=mem1,size=256M \
+    -object memory-backend-file,id=mem2,size=512M,mem-path=/tmp/mem2.bin,share=on \
+    -object memory-backend-file,id=lsa-mem2,size=16M,mem-path=/tmp/lsa-mem2.bin,share=on \
+    -object memory-backend-file,id=mem3,size=1G,mem-path=/tmp/mem3.bin,share=on \
+    -object memory-backend-file,id=lsa-mem3,size=16M,mem-path=/tmp/lsa-mem3.bin,share=on \
+    -object memory-backend-ram,id=mem4,size=1G \
+    -object memory-backend-file,id=mem5,size=1G,mem-path=/tmp/mem5.bin,share=on \
+    -object memory-backend-file,id=lsa-mem5,size=16M,mem-path=/tmp/lsa-mem5.bin,share=on \
+    -object memory-backend-ram,id=mem6,size=2G \
+    -object memory-backend-ram,id=mem7,size=512M \
+    -object memory-backend-ram,id=mem8,size=512M \
+    -object memory-backend-ram,id=mem9,size=2G</div>
+                </div>
+            </div>
+        
+            <div class="test-item">
+                <div class="test-header" onclick="toggleDetails(7)">
+                    <div class="test-status passed">
+                        PASSED
+                    </div>
+                    <div class="test-title">Memory Window Configuration</div>
+                    <div class="test-description">Realistic test scenario</div>
+                </div>
+                <div class="test-details" id="details-7">
+                    
+                    
+                    <h4>Generated QEMU Command:</h4>
+                    <div class="qemu-command">-M q35,cxl=on \
+    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12 \
+    -device pxb-cxl,bus=pcie.0,id=cxl.1,bus_nr=13 \
+    -device cxl-rp,bus=cxl.0,port=0,id=rp-0.0,chassis=0,slot=0 \
+    -device cxl-rp,bus=cxl.0,port=1,id=rp-0.1,chassis=0,slot=1 \
+    -device cxl-rp,bus=cxl.1,port=0,id=rp-1.0,chassis=1,slot=0 \
+    -device cxl-rp,bus=cxl.1,port=1,id=rp-1.1,chassis=1,slot=1 \
+    -device cxl-rp,bus=cxl.1,port=2,id=rp-1.2,chassis=1,slot=2 \
+    -device cxl-rp,bus=cxl.1,port=3,id=rp-1.3,chassis=1,slot=3 \
+    -device cxl-upstream,bus=rp-0.0,id=us0 \
+    -device cxl-downstream,bus=us0,port=0,chassis=0,slot=0,id=sw0.0 \
+    -device cxl-downstream,bus=us0,port=1,chassis=0,slot=1,id=sw0.1 \
+    -device cxl-downstream,bus=us0,port=2,chassis=0,slot=2,id=sw0.2 \
+    -device cxl-switch-mailbox-cci,bus=us0,id=sw0-mailbox \
+    -device cxl-upstream,bus=rp-0.1,id=us1 \
+    -device cxl-downstream,bus=us1,port=0,chassis=0,slot=0,id=sw1.0 \
+    -device cxl-downstream,bus=us1,port=1,chassis=0,slot=1,id=sw1.1 \
+    -device cxl-downstream,bus=us1,port=2,chassis=0,slot=2,id=sw1.2 \
+    -device cxl-downstream,bus=us1,port=3,chassis=0,slot=3,id=sw1.3 \
+    -device cxl-switch-mailbox-cci,bus=us1,id=sw1-mailbox \
+    -device cxl-type3,bus=rp-1.0,persistent-memdev=mem0,lsa=lsa-mem0,id=cxl-type3-dev-0,sn=0x938E9C79 \
+    -device cxl-accel,bus=rp-1.3,volatile-memdev=mem-ac-0,id=cxl-ac-dev-0,sn=0x3A5D2089 \
+    -device cxl-type3,bus=sw0.0,volatile-memdev=mem1,id=cxl-type3-dev-1,sn=0x3AB2E8CE \
+    -device cxl-type3,bus=sw0.2,persistent-memdev=mem2,lsa=lsa-mem2,id=cxl-type3-dev-2,sn=0x5FEB169D \
+    -device cxl-type3,bus=sw1.0,persistent-memdev=mem3,lsa=lsa-mem3,id=cxl-type3-dev-3,sn=0x1F2CEDD5 \
+    -device cxl-type3,bus=sw1.1,volatile-dc-memdev=mem4,id=cxl-type3-dev-4,num-dc-regions=1,sn=0x6871C5F1 \
+    -device cxl-type3,bus=sw1.3,persistent-memdev=mem5,lsa=lsa-mem5,id=cxl-type3-dev-5,sn=0x146F3CF6 \
+    -device cxl-type3,bus=rp-1.1,volatile-memdev=mem6,id=cxl-type3-dev-6,sn=0x70B0B002 \
+    -device cxl-type3,bus=rp-1.2,volatile-memdev=mem7,id=cxl-type3-dev-7,sn=0x67E4FDED \
+    -device cxl-type3,bus=sw0.1,volatile-memdev=mem8,id=cxl-type3-dev-8,sn=0x02979E71 \
+    -device cxl-type3,bus=sw1.2,volatile-memdev=mem9,id=cxl-type3-dev-9,sn=0x7BEFC668 \
+    -object memory-backend-file,id=mem0,size=2G,mem-path=/tmp/mem0.bin,share=on \
+    -object memory-backend-file,id=lsa-mem0,size=8M,mem-path=/tmp/lsa-mem0.bin,share=on \
+    -object memory-backend-ram,id=mem-ac-0,size=512M \
+    -object memory-backend-ram,id=mem1,size=256M \
+    -object memory-backend-file,id=mem2,size=512M,mem-path=/tmp/mem2.bin,share=on \
+    -object memory-backend-file,id=lsa-mem2,size=16M,mem-path=/tmp/lsa-mem2.bin,share=on \
+    -object memory-backend-file,id=mem3,size=1G,mem-path=/tmp/mem3.bin,share=on \
+    -object memory-backend-file,id=lsa-mem3,size=16M,mem-path=/tmp/lsa-mem3.bin,share=on \
+    -object memory-backend-ram,id=mem4,size=1G \
+    -object memory-backend-file,id=mem5,size=1G,mem-path=/tmp/mem5.bin,share=on \
+    -object memory-backend-file,id=lsa-mem5,size=16M,mem-path=/tmp/lsa-mem5.bin,share=on \
+    -object memory-backend-ram,id=mem6,size=2G \
+    -object memory-backend-ram,id=mem7,size=512M \
+    -object memory-backend-ram,id=mem8,size=512M \
+    -object memory-backend-ram,id=mem9,size=2G</div>
+                </div>
+            </div>
+        
+            <div class="test-item">
+                <div class="test-header" onclick="toggleDetails(8)">
+                    <div class="test-status passed">
+                        PASSED
+                    </div>
+                    <div class="test-title">Component Properties</div>
+                    <div class="test-description">Realistic test scenario</div>
+                </div>
+                <div class="test-details" id="details-8">
+                    
+                    
+                    <h4>Generated QEMU Command:</h4>
+                    <div class="qemu-command">-M q35,cxl=on \
+    -device pxb-cxl,bus=pcie.0,id=cxl.0,bus_nr=12 \
+    -device pxb-cxl,bus=pcie.0,id=cxl.1,bus_nr=13 \
+    -device cxl-rp,bus=cxl.0,port=0,id=rp-0.0,chassis=0,slot=0 \
+    -device cxl-rp,bus=cxl.0,port=1,id=rp-0.1,chassis=0,slot=1 \
+    -device cxl-rp,bus=cxl.1,port=0,id=rp-1.0,chassis=1,slot=0 \
+    -device cxl-rp,bus=cxl.1,port=1,id=rp-1.1,chassis=1,slot=1 \
+    -device cxl-rp,bus=cxl.1,port=2,id=rp-1.2,chassis=1,slot=2 \
+    -device cxl-rp,bus=cxl.1,port=3,id=rp-1.3,chassis=1,slot=3 \
+    -device cxl-upstream,bus=rp-0.0,id=us0 \
+    -device cxl-downstream,bus=us0,port=0,chassis=0,slot=0,id=sw0.0 \
+    -device cxl-downstream,bus=us0,port=1,chassis=0,slot=1,id=sw0.1 \
+    -device cxl-downstream,bus=us0,port=2,chassis=0,slot=2,id=sw0.2 \
+    -device cxl-switch-mailbox-cci,bus=us0,id=sw0-mailbox \
+    -device cxl-upstream,bus=rp-0.1,id=us1 \
+    -device cxl-downstream,bus=us1,port=0,chassis=0,slot=0,id=sw1.0 \
+    -device cxl-downstream,bus=us1,port=1,chassis=0,slot=1,id=sw1.1 \
+    -device cxl-downstream,bus=us1,port=2,chassis=0,slot=2,id=sw1.2 \
+    -device cxl-downstream,bus=us1,port=3,chassis=0,slot=3,id=sw1.3 \
+    -device cxl-switch-mailbox-cci,bus=us1,id=sw1-mailbox \
+    -device cxl-type3,bus=rp-1.0,persistent-memdev=mem0,lsa=lsa-mem0,id=cxl-type3-dev-0,sn=0x938E9C79 \
+    -device cxl-accel,bus=rp-1.3,volatile-memdev=mem-ac-0,id=cxl-ac-dev-0,sn=0x3A5D2089 \
+    -device cxl-type3,bus=sw0.0,volatile-memdev=mem1,id=cxl-type3-dev-1,sn=0x3AB2E8CE \
+    -device cxl-type3,bus=sw0.2,persistent-memdev=mem2,lsa=lsa-mem2,id=cxl-type3-dev-2,sn=0x5FEB169D \
+    -device cxl-type3,bus=sw1.0,persistent-memdev=mem3,lsa=lsa-mem3,id=cxl-type3-dev-3,sn=0x1F2CEDD5 \
+    -device cxl-type3,bus=sw1.1,volatile-dc-memdev=mem4,id=cxl-type3-dev-4,num-dc-regions=1,sn=0x6871C5F1 \
+    -device cxl-type3,bus=sw1.3,persistent-memdev=mem5,lsa=lsa-mem5,id=cxl-type3-dev-5,sn=0x146F3CF6 \
+    -device cxl-type3,bus=rp-1.1,volatile-memdev=mem6,id=cxl-type3-dev-6,sn=0x70B0B002 \
+    -device cxl-type3,bus=rp-1.2,volatile-memdev=mem7,id=cxl-type3-dev-7,sn=0x67E4FDED \
+    -device cxl-type3,bus=sw0.1,volatile-memdev=mem8,id=cxl-type3-dev-8,sn=0x02979E71 \
+    -device cxl-type3,bus=sw1.2,volatile-memdev=mem9,id=cxl-type3-dev-9,sn=0x7BEFC668 \
+    -object memory-backend-file,id=mem0,size=2G,mem-path=/tmp/mem0.bin,share=on \
+    -object memory-backend-file,id=lsa-mem0,size=8M,mem-path=/tmp/lsa-mem0.bin,share=on \
+    -object memory-backend-ram,id=mem-ac-0,size=512M \
+    -object memory-backend-ram,id=mem1,size=256M \
+    -object memory-backend-file,id=mem2,size=512M,mem-path=/tmp/mem2.bin,share=on \
+    -object memory-backend-file,id=lsa-mem2,size=16M,mem-path=/tmp/lsa-mem2.bin,share=on \
+    -object memory-backend-file,id=mem3,size=1G,mem-path=/tmp/mem3.bin,share=on \
+    -object memory-backend-file,id=lsa-mem3,size=16M,mem-path=/tmp/lsa-mem3.bin,share=on \
+    -object memory-backend-ram,id=mem4,size=1G \
+    -object memory-backend-file,id=mem5,size=1G,mem-path=/tmp/mem5.bin,share=on \
+    -object memory-backend-file,id=lsa-mem5,size=16M,mem-path=/tmp/lsa-mem5.bin,share=on \
+    -object memory-backend-ram,id=mem6,size=2G \
+    -object memory-backend-ram,id=mem7,size=512M \
+    -object memory-backend-ram,id=mem8,size=512M \
+    -object memory-backend-ram,id=mem9,size=2G</div>
+                </div>
+            </div>
+        
+
+        <div class="footer">
+            <p>CXL Canvas Automated Test Suite</p>
+        </div>
+    </div>
+
+    <script>
+        function toggleDetails(index) {
+            const details = document.getElementById('details-' + index);
+            details.classList.toggle('active');
+        }
+    </script>
+</body>
+</html>

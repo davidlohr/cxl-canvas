@@ -1,0 +1,17 @@
+# Browser support targets for CXL Canvas
+# Focus on modern browsers with good ES6+ support
+
+> 0.5%
+last 2 versions
+not dead
+not ie 11
+not chrome < 60
+not firefox < 55
+not safari < 12
+not edge < 15
+
+# Include some specific browsers for testing
+Chrome >= 60
+Firefox >= 55  
+Safari >= 12
+Edge >= 15
