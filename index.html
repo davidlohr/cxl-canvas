@@ -103,14 +103,27 @@
         #canvas-container.panning {
             cursor: grabbing;
         }
+        /* Gemini Modal Styles */
+        #gemini-modal {
+            transition: opacity 0.3s ease-in-out;
+        }
+        #gemini-modal > div { /* Modal content */
+            transition: transform 0.3s ease-in-out;
+        }
+        /* Simple Prose styles for AI output */
+        .prose ul { list-style-type: disc; padding-left: 1.5rem; margin-top: 0.5rem; }
+        .prose strong { font-weight: 600; color: #1e293b; }
+        .prose code { background-color: #f1f5f9; color: #4338ca; font-size: 0.875rem; padding: 0.125rem 0.375rem; border-radius: 0.25rem; }
+        .prose br { content: ""; display: block; margin-bottom: 0.75rem; }
+
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 flex flex-col h-screen">
 
     <!-- Header -->
     <header class="bg-white shadow-sm p-4 z-30 flex-shrink-0 border-b border-slate-200">
-        <h1 class="text-xl font-bold text-slate-900">CXL Topology Builder for QEMU</h1>
-        <p class="text-sm text-slate-500">Visually design CXL hierarchies and generate QEMU commands.</p>
+        <h1 class="text-xl font-bold text-slate-900">AI-Powered CXL Topology Builder</h1>
+        <p class="text-sm text-slate-500">Visually design CXL hierarchies, generate commands, and get AI explanations.</p>
     </header>
 
     <!-- Main Content -->
@@ -146,6 +159,10 @@
                     </button>
                 </div>
                  <div class="pt-4 border-t space-y-2">
+                    <button id="explain-topology" class="w-full bg-teal-600 text-white text-sm font-medium py-1 px-3 rounded-lg shadow-sm hover:bg-teal-700 transition-colors duration-200 flex items-center justify-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                        <span>✨ Explain Topology</span>
+                    </button>
                     <button id="generate-random" class="w-full bg-blue-600 text-white text-sm font-medium py-1 px-3 rounded-lg shadow-sm hover:bg-blue-700 transition-colors duration-200 flex items-center justify-center space-x-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         <span>Random Topology</span>
@@ -212,12 +229,36 @@
             <div id="command-wrapper" class="overflow-y-auto transition-all duration-500 ease-in-out">
                 <div class="flex items-start space-x-2">
                     <pre class="bg-gray-900 rounded-md p-3 w-full overflow-x-auto text-sm whitespace-pre"><code id="qemu-command">-machine q35,cxl=on ...</code></pre>
-                    <button id="copy-command" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 flex-shrink-0">Copy</button>
+                    <div class="flex flex-col space-y-2 flex-shrink-0">
+                        <button id="copy-command" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg transition-colors duration-200 text-sm">Copy</button>
+                        <button id="explain-command" class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-3 rounded-lg transition-colors duration-200 text-sm">✨ Explain</button>
+                    </div>
                 </div>
             </div>
         </div>
         <div id="copy-feedback" class="text-green-400 text-sm mt-2 opacity-0 transition-opacity">Command copied to clipboard!</div>
     </footer>
+
+    <!-- Modal for Gemini API Response -->
+    <div id="gemini-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-60 p-4 opacity-0 pointer-events-none">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl transform scale-95">
+            <div class="flex justify-between items-center p-4 border-b">
+                <h2 id="modal-title" class="text-xl font-bold text-slate-900">✨ AI Analysis</h2>
+                <button id="close-modal-btn" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="modal-body" class="p-6 max-h-[70vh] overflow-y-auto">
+                <!-- Loader -->
+                <div id="modal-loader" class="flex flex-col justify-center items-center h-48 space-y-3">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                    <p class="text-slate-500">Generating analysis...</p>
+                </div>
+                <!-- Content -->
+                <div id="modal-content-text" class="prose max-w-none text-slate-700"></div>
+            </div>
+        </div>
+    </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -235,6 +276,15 @@
         const toolbarAside = document.getElementById('toolbar-aside');
         const togglePropertiesBtn = document.getElementById('toggle-properties-btn');
         const propertiesPanel = document.getElementById('properties-panel');
+        
+        // Gemini Modal Elements
+        const geminiModal = document.getElementById('gemini-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalLoader = document.getElementById('modal-loader');
+        const modalContentText = document.getElementById('modal-content-text');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const explainTopologyBtn = document.getElementById('explain-topology');
+        const explainCommandBtn = document.getElementById('explain-command');
 
         // --- State Variables ---
         let components = [];
@@ -258,11 +308,123 @@
             'device-t2': `<svg class="component-icon text-orange-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="6" y1="8" x2="6" y2="16"></line><line x1="10" y1="8" x2="10" y2="16"></line><rect x="14" y="8" width="4" height="4" rx="1"></rect></svg>`,
             window: `<svg class="component-icon text-yellow-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line><line x1="12" y1="3" x2="12" y2="21"></line></svg>`
         };
+        
+        // --- Gemini API and AI Feature Functions ---
+        
+        /**
+         * Calls the Gemini API with a specific prompt.
+         * @param {string} prompt - The prompt to send to the model.
+         * @param {number} retries - The number of retry attempts.
+         * @param {number} delay - The delay in ms between retries.
+         * @returns {Promise<string>} - The generated text from the model.
+         */
+        async function callGeminiAPI(prompt, retries = 3, delay = 1000) {
+            const apiKey = ""; // Canvas will provide this.
+            // The ?key= parameter can cause 401 errors when the key is empty.
+            // The Canvas environment injects authentication, so the parameter is not needed.
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent`;
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
 
-        // --- All functions are declared here to prevent hoisting issues ---
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    
+                    const result = await response.json();
+
+                    if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        return result.candidates[0].content.parts[0].text;
+                    } else {
+                        throw new Error("Invalid response structure from Gemini API");
+                    }
+                } catch (error) {
+                    console.error(`Gemini API call attempt ${i + 1} failed:`, error);
+                    if (i < retries - 1) {
+                        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+                    } else {
+                        return "Sorry, there was an error communicating with the AI. Please check the console and try again later.";
+                    }
+                }
+            }
+        }
+        
+        /**
+         * Serializes the current topology into a human-readable text format for the LLM.
+         * @returns {string} - A text description of the topology.
+         */
+        function serializeTopology() {
+            if (components.length === 0) return "The canvas is empty.";
+
+            let description = "The CXL topology consists of the following components and connections:\n\n";
+            description += "## COMPONENTS:\n";
+            components.forEach(comp => {
+                let props = [];
+                if(comp.size) props.push(`size: ${comp.size}`);
+                if(comp.memoryType) props.push(`memoryType: ${comp.memoryType}`);
+                if(comp.isDCD) props.push(`isDCD: true`);
+                if(comp.numDownstreamPorts) props.push(`downstreamPorts: ${comp.numDownstreamPorts}`);
+                if(comp.hasCCI) props.push(`hasCCI: true`);
+
+                description += `- A **${comp.name}** (id: ${comp.qemuId || comp.id})`;
+                if (props.length > 0) {
+                    description += ` with properties { ${props.join(', ')} }`;
+                }
+                description += `.\n`;
+            });
+
+            description += "\n## CONNECTIONS:\n";
+            if (connections.length === 0) {
+                description += "- There are no connections.\n";
+            } else {
+                connections.forEach(conn => {
+                    const sourceComp = components.find(c => c.id === conn.source.componentId);
+                    const targetComp = components.find(c => c.id === conn.target.componentId);
+                    if (sourceComp && targetComp) {
+                        description += `- **${sourceComp.name}** (${sourceComp.qemuId || sourceComp.id}) is connected to **${targetComp.name}** (${targetComp.qemuId || targetComp.id}).\n`;
+                    }
+                });
+            }
+            return description;
+        }
+
+        // --- Modal Control Functions ---
+        const showModal = () => {
+            geminiModal.classList.remove('opacity-0', 'pointer-events-none');
+            geminiModal.querySelector('.transform').classList.remove('scale-95');
+        };
+
+        const hideModal = () => {
+            geminiModal.classList.add('opacity-0', 'pointer-events-none');
+            geminiModal.querySelector('.transform').classList.add('scale-95');
+        };
+
+        const prepareModalForRequest = (title) => {
+            modalTitle.textContent = title;
+            modalLoader.style.display = 'flex';
+            modalContentText.innerHTML = '';
+            showModal();
+        };
+
+        const displayModalResult = (content) => {
+            modalLoader.style.display = 'none';
+            let htmlContent = content
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                .replace(/^- (.*$)/gm, '<li>$1</li>')
+                .replace(/(<\/li>\n?<li>)/g, '</li><li>') // fix multiline lists
+                .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+            modalContentText.innerHTML = htmlContent.replace(/\n/g, '<br>');
+        };
+
+
+        // --- Core Application Functions ---
         
         function generateRandomSN() {
-            // Generate a random 32-bit integer and format it as a hex string
             const randomHex = Math.floor(Math.random() * 0xFFFFFFFF).toString(16).toUpperCase();
             return `0x${randomHex.padStart(8, '0')}`;
         }
@@ -1345,6 +1507,63 @@
             });
         });
 
+        // AI Feature Event Listeners
+        closeModalBtn.addEventListener('click', hideModal);
+        geminiModal.addEventListener('click', (e) => {
+            if (e.target === geminiModal) hideModal();
+        });
+
+        explainTopologyBtn.addEventListener('click', async () => {
+            prepareModalForRequest('✨ AI Topology Explanation');
+            const topologyDescription = serializeTopology();
+
+            const hasWindow = components.some(c => c.type === 'window');
+            let windowWarningInstruction = '';
+            if (!hasWindow) {
+                windowWarningInstruction = `- **CRITICAL OMISSION**: The topology is missing a CXL Fixed Memory Window (CFMWS/fmw). You must explicitly state that without this component, the topology is non-functional. Explain that the CFMWS is crucial because it describes the Host Physical Address (HPA) ranges associated with each CXL Host Bridge, enabling the host to access device memory.`;
+            }
+
+            const prompt = `You are a computer architect specializing in CXL technology. 
+                Your task is to explain a given CXL topology. 
+
+                Please pay close attention to these advanced CXL features:
+                - **CXL Fixed Memory Window (CFMWS)**: This component (represented as 'CXL Window' in the tool) is critical. It describes the Host Physical Address (HPA) windows (ranges) that are associated with each CXL Host Bridge, allowing the host CPU to access the memory on CXL devices.
+                - **Switch Mailbox CCI**: The Switch Mailbox Component Command Interface (CCI) transports Fabric Manager (FM) API commands, allowing for out-of-band management of the CXL fabric. If a switch has CCI enabled, highlight this management capability.
+                - **Dynamic Capacity Device (DCD)**: This indicates a device allows for runtime adjustment of its physical memory capacity. If you see a DCD, explain that memory can be dynamically added to or removed from it.
+
+                Follow these instructions for your response:
+                - Start with a high-level summary.
+                - Describe the key components and their connections.
+                ${windowWarningInstruction}
+                - Suggest a plausible real-world use case for this specific configuration.
+                - Keep the explanation clear and concise. Format your response using basic markdown (bolding with ** and bullet points with -).
+
+                Here is the topology to analyze:
+                ${topologyDescription}`;
+            const result = await callGeminiAPI(prompt);
+            displayModalResult(result);
+        });
+
+        explainCommandBtn.addEventListener('click', async () => {
+            prepareModalForRequest('✨ AI QEMU Command Explanation');
+            const command = qemuCommandOutput.textContent;
+            const prompt = `You are a QEMU expert specializing in CXL simulation. 
+                Your task is to explain the provided QEMU command. 
+                - Break down the command line, explaining each significant flag and device/object definition.
+                - Explain how the arguments relate to each other to form the complete CXL topology.
+                - Focus on the CXL-specific parts.
+                - **Important**: When referring to the \`pxb-cxl\` device, you MUST call it a "CXL Host Bridge", not a "root bus".
+                - Format your response clearly using basic markdown (bolding with ** and bullet points with -).
+
+                Here is the QEMU command:
+                \`\`\`
+                ${command}
+                \`\`\``;
+            const result = await callGeminiAPI(prompt);
+            displayModalResult(result);
+        });
+
+
         // --- Initial state ---
         resetCanvas();
 
@@ -1352,3 +1571,4 @@
     </script>
 </body>
 </html>
+
