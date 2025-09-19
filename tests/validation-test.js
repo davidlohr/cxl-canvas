@@ -98,7 +98,7 @@ class ValidationTestRunner {
     
     // Generate a random topology
     await page.click('#generate-random');
-    await page.waitForDelay(2000); // Wait for generation to complete
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for generation to complete
     
     const qemuCommand = await this.getQemuCommand(page);
     const testResult = {
@@ -141,7 +141,7 @@ class ValidationTestRunner {
     
     // Reset to default topology
     await page.click('#reset-canvas');
-    await page.waitForDelay(1000);
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     const qemuCommand = await this.getQemuCommand(page);
     const testResult = {
@@ -177,11 +177,11 @@ class ValidationTestRunner {
     
     // Add some components without connecting them
     await page.click('#add-device');
-    await page.waitForDelay(500);
+    await new Promise(resolve => setTimeout(resolve, 500));
     await page.click('#add-switch');
-    await page.waitForDelay(500);
+    await new Promise(resolve => setTimeout(resolve, 500));
     await page.click('#add-window');
-    await page.waitForDelay(1000);
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     const qemuCommand = await this.getQemuCommand(page);
     const testResult = {

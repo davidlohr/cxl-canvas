@@ -83,7 +83,7 @@ class SimpleTestRunner {
   async testAddDevice(page) {
     // Add a Type3 device
     await page.click('#add-device');
-    await page.waitForDelay(1000);
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Connect it to the existing root port
     await this.connectLastDeviceToRootPort(page);
@@ -106,7 +106,7 @@ class SimpleTestRunner {
   async testMemoryWindow(page) {
     // Add a memory window
     await page.click('#add-window');
-    await page.waitForDelay(1000);
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Configure the window to target the host bridge
     await this.configureMemoryWindow(page);
@@ -125,14 +125,14 @@ class SimpleTestRunner {
   async testResetAndCreate(page) {
     // Reset canvas
     await page.click('#reset-canvas');
-    await page.waitForDelay(1000);
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Should go back to default
     let qemuCommand = await this.getQemuCommand(page);
     
     // Add a switch-based topology
     await page.click('#add-switch');
-    await page.waitForDelay(500);
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     // Connect switch to existing root port
     await this.connectLastSwitchToRootPort(page);
@@ -152,11 +152,11 @@ class SimpleTestRunner {
     try {
       // Find and click root port downstream port
       await page.click('.port.downstream');
-      await page.waitForDelay(200);
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       // Find and click device upstream port  
       await page.click('.port.upstream');
-      await page.waitForDelay(200);
+      await new Promise(resolve => setTimeout(resolve, 200));
     } catch (error) {
       console.log('   Note: Automatic connection failed, device may be unconnected');
     }
@@ -166,9 +166,9 @@ class SimpleTestRunner {
     try {
       // Similar connection for switch
       await page.click('.port.downstream');
-      await page.waitForDelay(200);
+      await new Promise(resolve => setTimeout(resolve, 200));
       await page.click('.port.upstream');
-      await page.waitForDelay(200);
+      await new Promise(resolve => setTimeout(resolve, 200));
     } catch (error) {
       console.log('   Note: Automatic connection failed, switch may be unconnected');
     }
@@ -180,19 +180,19 @@ class SimpleTestRunner {
       const windowElements = await page.$$('.cxl-component');
       if (windowElements.length > 0) {
         await windowElements[windowElements.length - 1].click();
-        await page.waitForDelay(500);
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         // Try to check the host bridge checkbox if it exists
         const hostCheckbox = await page.$('#host-checkboxes input[type="checkbox"]');
         if (hostCheckbox) {
           await hostCheckbox.click();
-          await page.waitForDelay(200);
+          await new Promise(resolve => setTimeout(resolve, 200));
           
           // Click update if button exists
           const updateButton = await page.$('#update-component');
           if (updateButton) {
             await updateButton.click();
-            await page.waitForDelay(500);
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
         }
       }
