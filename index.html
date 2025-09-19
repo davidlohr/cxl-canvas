@@ -75,6 +75,7 @@
         .component-sublabel {
             font-size: 12px;
             color: #64748b;
+            text-align: center;
         }
         #selection-box {
             position: absolute;
@@ -122,7 +123,7 @@
 
     <!-- Header -->
     <header class="bg-white shadow-sm p-4 z-30 flex-shrink-0 border-b border-slate-200">
-        <h1 class="text-xl font-bold text-slate-900">AI-Powered CXL Topology Builder</h1>
+        <h1 class="text-xl font-bold text-slate-900">CXL Topology Builder</h1>
         <p class="text-sm text-slate-500">Visually design CXL hierarchies, and generate QEMU commands.</p>
     </header>
 
@@ -486,6 +487,8 @@
                         name: 'CXL Root Port',
                         baseColor: 'purple',
                         qemuId: `rp-${rpCount}`,
+                        chassis: null,
+                        baseSlot: null,
                         numDownstreamPorts: 2,
                         ports: [
                             { type: 'upstream', id: 'in-0' },
@@ -501,6 +504,8 @@
                         baseColor: 'sky',
                         qemuId: `sw${switchCount}`,
                         upstreamQemuId: `us${switchCount}`,
+                        chassis: null,
+                        baseSlot: null,
                         numDownstreamPorts: 4,
                         hasCCI: false,
                         ports: [
@@ -594,6 +599,9 @@
             canvas.appendChild(selectionBox);
             connectionsSvg.innerHTML = '';
             
+            // This ensures chassis numbers are calculated before rendering components.
+            performSmartAssignment();
+
             components.forEach(comp => {
                 const el = document.createElement('div');
                 el.id = comp.id;
@@ -606,36 +614,47 @@
 
                 let content = componentIcons[comp.type];
                 content += `<div class="component-label text-slate-800">${comp.name}</div>`;
+                
+                let sublabels = [];
                 if (comp.qemuId) {
-                    content += `<div class="component-sublabel">${comp.qemuId}</div>`;
+                    sublabels.push(comp.qemuId);
                 }
-                 if(comp.type === 'device' || comp.type === 'device-t2') { 
-                     let typeLabel = comp.isDCD ? 'DCD' : comp.memoryType;
-                     content += `<div class="component-sublabel">${comp.size} ${comp.type === 'device-t2' ? '' : `(${typeLabel})`}</div>`;
+
+                if (comp.type === 'device' || comp.type === 'device-t2') { 
+                    let typeLabel = comp.isDCD ? 'DCD' : comp.memoryType;
+                    sublabels.push(`${comp.size} ${comp.type === 'device-t2' ? '' : `(${typeLabel})`}`);
                 } else if (comp.type === 'window') {
-                     content += `<div class="component-sublabel">${comp.size}</div>`;
+                    sublabels.push(comp.size);
                 } else if (comp.type === 'switch' && comp.hasCCI) {
-                     content += `<div class="component-sublabel">(CCI Enabled)</div>`;
+                    sublabels.push('(CCI)');
                 }
+
+
+                if (sublabels.length > 0) {
+                     content += `<div class="component-sublabel">${sublabels.join('<br>')}</div>`;
+                }
+
                 el.innerHTML = content;
                 
-                comp.ports?.forEach((port) => {
-                    const portEl = document.createElement('div');
-                    portEl.className = `port ${port.type}`;
-                    portEl.dataset.componentId = comp.id;
-                    portEl.dataset.portId = port.id;
+                if(comp.ports) {
+                    comp.ports.forEach((port) => {
+                        const portEl = document.createElement('div');
+                        portEl.className = `port ${port.type}`;
+                        portEl.dataset.componentId = comp.id;
+                        portEl.dataset.portId = port.id;
 
-                    if (port.type === 'downstream') {
-                        const downstreamPorts = comp.ports.filter(p => p.type === 'downstream');
-                        const portIndex = downstreamPorts.findIndex(p => p.id === port.id);
-                        if (downstreamPorts.length > 1) {
-                            portEl.style.left = `calc(${(100 / (downstreamPorts.length + 1)) * (portIndex + 1)}% - 8px)`;
+                        if (port.type === 'downstream') {
+                            const downstreamPorts = comp.ports.filter(p => p.type === 'downstream');
+                            const portIndex = downstreamPorts.findIndex(p => p.id === port.id);
+                            if (downstreamPorts.length > 1) {
+                                portEl.style.left = `calc(${(100 / (downstreamPorts.length + 1)) * (portIndex + 1)}% - 8px)`;
+                            }
                         }
-                    }
 
-                    portEl.addEventListener('click', onPortClick);
-                    el.appendChild(portEl);
-                });
+                        portEl.addEventListener('click', onPortClick);
+                        el.appendChild(portEl);
+                    });
+                }
                 
                 el.addEventListener('mousedown', onComponentMouseDown);
                 canvas.appendChild(el);
@@ -652,7 +671,9 @@
             resizeCanvasToFitComponents();
             requestAnimationFrame(renderConnections); // Defer to ensure layout is calculated
             updateQemuCommand();
-            renderPropertiesPanel();
+            if(document.getElementById('properties-content') && !propertiesPanel.classList.contains('collapsed')) { // only render properties if panel is open
+                renderPropertiesPanel();
+            }
         }
 
         function renderConnections() {
@@ -690,6 +711,9 @@
                 }
                 return;
             }
+            
+            // This is called here too to ensure the property panel has the latest value.
+            performSmartAssignment();
 
             let propertiesHtml = `<h2 class="text-lg font-semibold text-slate-900 border-b pb-2">${comp.name}</h2><div class="space-y-4 mt-4">`;
             if (comp.type === 'device') {
@@ -739,34 +763,34 @@
                         <input type="text" id="prop-sn" value="${comp.sn}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                     </div>
                 `;
-            } else if (comp.type === 'switch') {
+            } else if (comp.type === 'switch' || comp.type === 'rootport') {
+                if (comp.type === 'switch') {
+                     propertiesHtml += `<div><label for="prop-ports" class="block text-sm font-medium text-gray-700">Downstream Ports</label><input type="number" id="prop-ports" value="${comp.numDownstreamPorts}" min="1" max="16" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></div>`;
+                } else { // rootport
+                    propertiesHtml += `<div><label for="prop-rp-ports" class="block text-sm font-medium text-gray-700">Downstream Ports</label><input type="number" id="prop-rp-ports" value="${comp.numDownstreamPorts}" min="1" max="16" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></div>`;
+                }
+                
                 propertiesHtml += `
                     <div>
-                        <label for="prop-ports" class="block text-sm font-medium text-gray-700">Downstream Ports</label>
-                        <input type="number" id="prop-ports" value="${comp.numDownstreamPorts}" min="1" max="16" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <label for="prop-chassis" class="block text-sm font-medium text-gray-700">Chassis Number</label>
+                        <input type="number" id="prop-chassis" value="${comp.chassis ?? comp.assignedChassis}" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                     </div>
-                    <div class="text-sm p-3 bg-slate-50 rounded-md text-slate-600">
-                        Chassis and Slot numbers are assigned automatically to prevent conflicts.
+                     <div>
+                        <label for="prop-slot" class="block text-sm font-medium text-gray-700">Starting Slot</label>
+                        <input type="number" id="prop-slot" value="${comp.baseSlot ?? comp.assignedBaseSlot}" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                     </div>
-                     <div class="relative flex items-start">
+                `;
+
+                if (comp.type === 'switch') {
+                    propertiesHtml += `<div class="relative flex items-start pt-2">
                         <div class="flex h-5 items-center">
                             <input id="prop-cci" type="checkbox" ${comp.hasCCI ? 'checked' : ''} class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                         </div>
                         <div class="ml-3 text-sm">
                             <label for="prop-cci" class="font-medium text-gray-700">Enable CCI Mailbox</label>
                         </div>
-                    </div>
-                `;
-            } else if (comp.type === 'rootport') {
-                 propertiesHtml += `
-                    <div>
-                        <label for="prop-rp-ports" class="block text-sm font-medium text-gray-700">Downstream Ports</label>
-                        <input type="number" id="prop-rp-ports" value="${comp.numDownstreamPorts}" min="1" max="16" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                    </div>
-                    <div class="text-sm p-3 bg-slate-50 rounded-md text-slate-600">
-                        Chassis and Slot numbers are assigned automatically to prevent conflicts.
-                    </div>
-                `;
+                    </div>`;
+                }
             } else if (comp.type === 'window') {
                 const granularities = { "256": "256 Bytes", "512": "512 Bytes", "1k": "1 KB", "2k": "2 KB", "4k": "4 KB", "8k": "8 KB", "16k": "16 KB" };
                 let granularityOptions = '';
@@ -930,6 +954,16 @@
                         return true;
                     });
                 }
+                const chassisInput = document.getElementById('prop-chassis');
+                if (chassisInput) {
+                    const chassisVal = chassisInput.value;
+                    comp.chassis = chassisVal === '' ? null : parseInt(chassisVal, 10);
+                }
+                 const slotInput = document.getElementById('prop-slot');
+                if (slotInput) {
+                    const slotVal = slotInput.value;
+                    comp.baseSlot = slotVal === '' ? null : parseInt(slotVal, 10);
+                }
             } else if (comp.type === 'switch') {
                 const newPortCount = parseInt(document.getElementById('prop-ports').value, 10);
                 comp.hasCCI = document.getElementById('prop-cci').checked;
@@ -943,6 +977,16 @@
                         }
                         return true;
                     });
+                }
+                const chassisInput = document.getElementById('prop-chassis');
+                if (chassisInput) {
+                    const chassisVal = chassisInput.value;
+                    comp.chassis = chassisVal === '' ? null : parseInt(chassisVal, 10);
+                }
+                 const slotInput = document.getElementById('prop-slot');
+                if (slotInput) {
+                    const slotVal = slotInput.value;
+                    comp.baseSlot = slotVal === '' ? null : parseInt(slotVal, 10);
                 }
             } 
             else if (comp.type === 'host') {
@@ -1337,57 +1381,25 @@
             return `${Math.round(bytes / (1024 ** i))}${units[i]}`;
         };
 
-
-        function updateQemuCommand() {
-            let machineOpts = ['-M q35,cxl=on'];
-            let memoryOpts = [];
-            let deviceOpts = [];
-            let objectOpts = [];
-            let hostPortCounters = new Map();
+        function findHostAncestor(componentId, parentMap) {
+            if (!componentId) return null;
+            let currentId = componentId;
+            let ancestorId = parentMap.get(currentId);
             
-            // --- Smart Chassis/Slot Assignment ---
-            const parentMap = new Map();
-            connections.forEach(c => parentMap.set(c.target.componentId, c.source.componentId));
-
-            function findHostAncestor(componentId) {
-                if (!componentId) return null;
-                let currentId = componentId;
-                let ancestorId = parentMap.get(currentId);
-                
-                while (ancestorId) {
-                    currentId = ancestorId;
-                    ancestorId = parentMap.get(currentId);
-                }
-                
-                const ancestorComp = components.find(c => c.id === currentId);
-                if (ancestorComp && ancestorComp.type === 'host') {
-                    return ancestorComp.id;
-                }
-                return null;
+            while (ancestorId) {
+                currentId = ancestorId;
+                ancestorId = parentMap.get(currentId);
             }
-
-            // Assign a unique, incrementing chassis number to each host bridge.
+            
+            const ancestorComp = components.find(c => c.id === currentId);
+            if (ancestorComp && ancestorComp.type === 'host') {
+                return ancestorComp.id;
+            }
+            return null;
+        }
+        
+        function getTopologicalOrder() {
             const hosts = components.filter(c => c.type === 'host');
-            hosts.sort((a, b) => a.qemuId.localeCompare(b.qemuId, undefined, { numeric: true }));
-
-            const hostChassisMap = new Map();
-            hosts.forEach((host, index) => {
-                hostChassisMap.set(host.id, index);
-            });
-
-            // Assign the host's chassis number to all its downstream components.
-            components.forEach(comp => {
-                if (comp.type === 'rootport' || comp.type === 'switch') {
-                    const hostId = findHostAncestor(comp.id);
-                    if (hostId && hostChassisMap.has(hostId)) {
-                        comp.assignedChassis = hostChassisMap.get(hostId);
-                    } else {
-                        comp.assignedChassis = -1; // Mark as unassigned if no host found
-                    }
-                }
-            });
-            // --- End Smart Assignment ---
-
             const connectionMap = new Map(connections.map(c => [c.target.componentId, { parentId: c.source.componentId, parentPortId: c.source.portId }]));
             
             const processed = new Set(hosts.map(h => h.id));
@@ -1405,10 +1417,66 @@
                         nextBatch.push(comp);
                     }
                 }
-                if (toProcess.length === nextBatch.length) break; // No progress
+                if (toProcess.length === nextBatch.length && nextBatch.length > 0) { 
+                    console.warn("Cycle detected or unconnected components, breaking sort.", nextBatch);
+                    processingOrder.push(...nextBatch);
+                    break; 
+                }
                 toProcess = nextBatch;
+                if(toProcess.length === 0) break;
             }
+            return processingOrder;
+        }
+
+        function performSmartAssignment() {
+            const parentMap = new Map();
+            connections.forEach(c => parentMap.set(c.target.componentId, c.source.componentId));
+
+            const hosts = components.filter(c => c.type === 'host');
+            hosts.sort((a, b) => (a.qemuId || '').localeCompare(b.qemuId || '', undefined, { numeric: true }));
+
+            const hostChassisMap = new Map();
+            hosts.forEach((host, index) => {
+                hostChassisMap.set(host.id, index);
+            });
             
+            const processingOrder = getTopologicalOrder();
+            const chassisSlotCounters = new Map();
+
+            processingOrder.forEach(comp => {
+                if (comp.type === 'rootport' || comp.type === 'switch') {
+                    const hostId = findHostAncestor(comp.id, parentMap);
+                    if (hostId && hostChassisMap.has(hostId)) {
+                        comp.assignedChassis = hostChassisMap.get(hostId);
+                    } else {
+                        comp.assignedChassis = 0; 
+                    }
+
+                    const finalChassis = comp.chassis ?? comp.assignedChassis;
+                    const nextSlot = chassisSlotCounters.get(finalChassis) || 0;
+                    comp.assignedBaseSlot = nextSlot;
+
+                    const finalBaseSlot = comp.baseSlot ?? comp.assignedBaseSlot;
+                    chassisSlotCounters.set(finalChassis, finalBaseSlot + comp.numDownstreamPorts);
+                }
+            });
+        }
+
+
+        function updateQemuCommand() {
+            let machineOpts = ['-M q35,cxl=on'];
+            let memoryOpts = [];
+            let deviceOpts = [];
+            let objectOpts = [];
+            
+            performSmartAssignment();
+            
+            const hosts = components.filter(c => c.type === 'host');
+            const processingOrder = getTopologicalOrder();
+            const connectionMap = new Map(connections.map(c => [c.target.componentId, { parentId: c.source.componentId, parentPortId: c.source.portId }]));
+            const parentMap = new Map(connections.map(c => [c.target.componentId, c.source.componentId]));
+
+
             const windows = components.filter(w => w.type === 'window');
             windows.forEach((win, index) => {
                 let fmwTargets = win.hostBridgeIds
@@ -1426,8 +1494,9 @@
 
             hosts.forEach(host => {
                 deviceOpts.push(`-device pxb-cxl,bus=pcie.0,id=${host.qemuId},bus_nr=${host.bus_nr}`);
-                hostPortCounters.set(host.id, 0);
             });
+            
+            let hostPortCounters = new Map();
 
             processingOrder.forEach(comp => {
                 const parentInfo = connectionMap.get(comp.id);
@@ -1438,38 +1507,42 @@
 
                 if (parentComp.type === 'host') {
                     parentBus = parentComp.qemuId;
-                } else if (parentComp.type === 'switch') {
+                } else if (parentComp.type === 'switch' || parentComp.type === 'rootport') {
                     const portIndex = parseInt(parentInfo.parentPortId.split('-')[1]);
                     parentBus = `${parentComp.qemuId}.${portIndex}`;
-                } else if (parentComp.type === 'rootport') {
-                    const portIndex = parseInt(parentInfo.parentPortId.split('-')[1]);
-                    parentBus = `${parentComp.qemuId}.${portIndex}`;
-                }
-                 else {
+                } else {
                     return;
                 }
 
                 switch (comp.type) {
                      case 'rootport':
-                        const parentHost = components.find(c => c.id === parentInfo.parentId);
-                        if(parentHost && parentHost.type === 'host') {
-                            let portNum = hostPortCounters.get(parentHost.id) || 0;
+                        const parentHostId = findHostAncestor(comp.id, parentMap);
+                        if(parentHostId) {
+                            let portNum = hostPortCounters.get(parentHostId) || 0;
+                            const finalChassis = comp.chassis ?? comp.assignedChassis;
+                            const finalBaseSlot = comp.baseSlot ?? comp.assignedBaseSlot;
+                            
                             for (let i = 0; i < comp.numDownstreamPorts; i++) {
                                 const portId = `out-${i}`;
                                 const isPortConnected = connections.some(conn => conn.source.componentId === comp.id && conn.source.portId === portId);
                                 if (isPortConnected) {
                                     const deviceId = `${comp.qemuId}.${i}`;
-                                    deviceOpts.push(`-device cxl-rp,bus=${parentBus},port=${portNum},id=${deviceId},chassis=${comp.assignedChassis},slot=${i}`);
+                                    const finalSlot = finalBaseSlot + i;
+                                    deviceOpts.push(`-device cxl-rp,bus=${parentBus},port=${portNum},id=${deviceId},chassis=${finalChassis},slot=${finalSlot}`);
                                     portNum++;
                                 }
                             }
-                            hostPortCounters.set(parentHost.id, portNum);
+                            hostPortCounters.set(parentHostId, portNum);
                         }
                         break;
                     case 'switch':
                         deviceOpts.push(`-device cxl-upstream,bus=${parentBus},id=${comp.upstreamQemuId}`);
+                        const finalChassis = comp.chassis ?? comp.assignedChassis;
+                        const finalBaseSlot = comp.baseSlot ?? comp.assignedBaseSlot;
+
                         for (let i = 0; i < comp.numDownstreamPorts; i++) {
-                            deviceOpts.push(`-device cxl-downstream,bus=${comp.upstreamQemuId},port=${i},chassis=${comp.assignedChassis},slot=${i},id=${comp.qemuId}.${i}`);
+                             const finalSlot = finalBaseSlot + i;
+                            deviceOpts.push(`-device cxl-downstream,bus=${comp.upstreamQemuId},port=${i},chassis=${finalChassis},slot=${finalSlot},id=${comp.qemuId}.${i}`);
                         }
                         if (comp.hasCCI) {
                             deviceOpts.push(`-device cxl-switch-mailbox-cci,bus=${comp.upstreamQemuId},id=${comp.qemuId}-mailbox`);
@@ -1495,19 +1568,8 @@
                 }
             });
             
-            const unconnected = components.filter(c => !processed.has(c.id) && c.type !== 'window');
-            let unconnectedLines = [];
-            if (unconnected.length > 0) {
-                if (deviceOpts.length > 0 || objectOpts.length > 0) unconnectedLines.push(''); 
-                unconnectedLines.push('# Unconnected Components (will be ignored by QEMU):');
-                unconnected.forEach(comp => unconnectedLines.push(`#   - ${comp.name} (${comp.qemuId})`));
-            }
-            
-            const finalCommand = [ ...machineOpts, ...memoryOpts, ...deviceOpts, ...objectOpts, ...unconnectedLines].join(' \\\n    ');
+            const finalCommand = [ ...machineOpts, ...memoryOpts, ...deviceOpts, ...objectOpts].join(' \\\n    ');
             qemuCommandOutput.textContent = finalCommand;
-
-            // Cleanup temporary property
-            components.forEach(c => delete c.assignedChassis);
         }
 
         // --- Event Handlers ---
@@ -1640,7 +1702,3 @@
     </script>
 </body>
 </html>
-
-
-
-
