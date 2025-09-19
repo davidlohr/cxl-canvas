@@ -3,16 +3,8 @@
   "version": "1.0.0",
   "description": "Automated testing for CXL topology QEMU command generation",
   "scripts": {
-    "test": "node tests/validation-test.js",
-    "test:realistic": "node tests/realistic-test.js",
-    "test:full": "node tests/run-tests.js",
-    "test:qemu-validation": "node tests/simple-qemu-validation.js",
-    "test:qemu-boot": "node tests/qemu-boot-validation.js",
     "test:browser-compat": "node tests/browser-compatibility-test.js",
-    "test:watch": "nodemon tests/validation-test.js",
-    "test:coverage": "node tests/run-tests.js --coverage",
     "lint": "node tests/js-compatibility-check.js",
-    "validate-qemu": "node tests/qemu-validator.js",
     "serve": "node tests/test-server.js"
   },
   "devDependencies": {
