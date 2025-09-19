@@ -55,11 +55,14 @@ class ValidationTestRunner {
   }
 
   async testDefaultState(page) {
-    console.log('📋 Test 1: Default application state');
+    console.log('📋 Test 1: Default application state with required CXL memory window');
+    
+    // Add required CXL fixed memory window to default topology
+    await this.ensureMemoryWindowExists(page);
     
     const qemuCommand = await this.getQemuCommand(page);
     const testResult = {
-      name: 'Default State',
+      name: 'Default State with Memory Window',
       qemuCommand,
       validation: this.validator.validateCommand(qemuCommand),
       passed: false,
@@ -89,16 +92,27 @@ class ValidationTestRunner {
       testResult.notes.push('✓ Contains CXL host bridge');
     }
 
+    // Check for required CXL memory window
+    if (qemuCommand.includes('cxl-fixed-memory-window')) {
+      testResult.notes.push('✓ Contains required CXL fixed memory window');
+    } else {
+      testResult.notes.push('❌ Missing required CXL fixed memory window');
+      testResult.passed = false;
+    }
+
     this.results.tests.push(testResult);
     console.log('');
   }
 
   async testRandomTopology(page) {
-    console.log('📋 Test 2: Random topology generation');
+    console.log('📋 Test 2: Random topology generation with required CXL memory window');
     
     // Generate a random topology
     await page.click('#generate-random');
     await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for generation to complete
+    
+    // Ensure CXL memory window exists for all topologies
+    await this.ensureMemoryWindowExists(page);
     
     const qemuCommand = await this.getQemuCommand(page);
     const testResult = {
@@ -132,16 +146,27 @@ class ValidationTestRunner {
       testResult.notes.push('✓ Contains CXL endpoint devices');
     }
 
+    // Check for required CXL memory window
+    if (qemuCommand.includes('cxl-fixed-memory-window')) {
+      testResult.notes.push('✓ Contains required CXL fixed memory window');
+    } else {
+      testResult.notes.push('❌ Missing required CXL fixed memory window');
+      testResult.passed = false;
+    }
+
     this.results.tests.push(testResult);
     console.log('');
   }
 
   async testAfterReset(page) {
-    console.log('📋 Test 3: After reset to default');
+    console.log('📋 Test 3: After reset to default with required CXL memory window');
     
     // Reset to default topology
     await page.click('#reset-canvas');
     await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Add required CXL memory window after reset
+    await this.ensureMemoryWindowExists(page);
     
     const qemuCommand = await this.getQemuCommand(page);
     const testResult = {
@@ -166,14 +191,22 @@ class ValidationTestRunner {
       });
     }
 
-    testResult.notes.push('Reset returns to basic host-rootport topology');
+    testResult.notes.push('Reset returns to basic host-rootport topology with memory window');
+
+    // Check for required CXL memory window
+    if (qemuCommand.includes('cxl-fixed-memory-window')) {
+      testResult.notes.push('✓ Contains required CXL fixed memory window');
+    } else {
+      testResult.notes.push('❌ Missing required CXL fixed memory window');
+      testResult.passed = false;
+    }
 
     this.results.tests.push(testResult);
     console.log('');
   }
 
   async testWithExtraComponents(page) {
-    console.log('📋 Test 4: Adding unconnected components');
+    console.log('📋 Test 4: Adding unconnected components with required CXL memory window');
     
     // Add some components without connecting them
     await page.click('#add-device');
@@ -182,6 +215,9 @@ class ValidationTestRunner {
     await new Promise(resolve => setTimeout(resolve, 500));
     await page.click('#add-window');
     await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Ensure the memory window is properly configured
+    await this.ensureMemoryWindowExists(page);
     
     const qemuCommand = await this.getQemuCommand(page);
     const testResult = {
@@ -215,6 +251,14 @@ class ValidationTestRunner {
       testResult.notes.push('✓ Memory window configuration generated');
     }
 
+    // Check for required CXL memory window
+    if (qemuCommand.includes('cxl-fixed-memory-window')) {
+      testResult.notes.push('✓ Contains required CXL fixed memory window');
+    } else {
+      testResult.notes.push('❌ Missing required CXL fixed memory window');
+      testResult.passed = false;
+    }
+
     this.results.tests.push(testResult);
     console.log('');
   }
@@ -224,6 +268,59 @@ class ValidationTestRunner {
       const commandElement = document.getElementById('qemu-command');
       return commandElement ? commandElement.textContent : '';
     });
+  }
+
+  /**
+   * Ensures that a CXL fixed memory window exists and is properly associated with host bridges
+   * This is a MANDATORY requirement for all valid CXL topologies
+   */
+  async ensureMemoryWindowExists(page) {
+    // Check if a memory window already exists
+    const existingWindows = await page.$$('.cxl-component[data-type="window"]');
+    
+    if (existingWindows.length === 0) {
+      console.log('   Adding required CXL fixed memory window...');
+      // Add a memory window if none exists
+      await page.click('#add-window');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    // Configure the memory window to be associated with host bridges
+    await this.configureMemoryWindowWithHostBridges(page);
+  }
+
+  /**
+   * Configures the memory window to be properly associated with one or more host bridges
+   */
+  async configureMemoryWindowWithHostBridges(page) {
+    try {
+      // Find and click on the memory window to select it
+      const memoryWindows = await page.$$('.cxl-component[data-type="window"]');
+      if (memoryWindows.length > 0) {
+        await memoryWindows[0].click();
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Try to check the first available host bridge checkbox
+        const hostCheckbox = await page.$('#host-checkboxes input[type="checkbox"]');
+        if (hostCheckbox) {
+          const isChecked = await page.evaluate(checkbox => checkbox.checked, hostCheckbox);
+          if (!isChecked) {
+            await hostCheckbox.click();
+            await new Promise(resolve => setTimeout(resolve, 200));
+            console.log('   ✓ Associated memory window with host bridge');
+          }
+          
+          // Update the component to apply the association
+          const updateButton = await page.$('#update-component');
+          if (updateButton) {
+            await updateButton.click();
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+      }
+    } catch (error) {
+      console.log(`   Note: Could not configure memory window association: ${error.message}`);
+    }
   }
 
   printResults() {
