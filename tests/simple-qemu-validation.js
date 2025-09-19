@@ -14,7 +14,7 @@ const path = require('path');
 class SimpleQemuValidator {
   constructor(options = {}) {
     this.options = {
-      qemuPath: options.qemuPath || 'qemu-system-x86_64',
+      qemuPath: options.qemuPath || this.findQemuPath(),
       timeout: options.timeout || 15000,
       verbose: options.verbose || false,
       ...options
@@ -27,6 +27,29 @@ class SimpleQemuValidator {
       skipped: 0,
       tests: []
     };
+  }
+
+  findQemuPath() {
+    const possiblePaths = [
+      'qemu-system-x86_64',
+      '/usr/bin/qemu-system-x86_64',
+      '/usr/local/bin/qemu-system-x86_64',
+      '/opt/homebrew/bin/qemu-system-x86_64'
+    ];
+
+    const { execSync } = require('child_process');
+    
+    for (const qemuPath of possiblePaths) {
+      try {
+        execSync(`which ${qemuPath}`, { stdio: 'ignore' });
+        return qemuPath;
+      } catch (error) {
+        // Continue to next path
+      }
+    }
+    
+    // Fallback to default
+    return 'qemu-system-x86_64';
   }
 
   async runValidationTests() {

@@ -7,6 +7,7 @@
     "test:realistic": "node tests/realistic-test.js",
     "test:full": "node tests/run-tests.js",
     "test:qemu-validation": "node tests/simple-qemu-validation.js",
+    "test:qemu-boot": "node tests/qemu-boot-validation.js",
     "test:browser-compat": "node tests/browser-compatibility-test.js",
     "test:watch": "nodemon tests/validation-test.js",
     "test:coverage": "node tests/run-tests.js --coverage",

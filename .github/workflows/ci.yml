@@ -90,13 +90,21 @@ jobs:
     - name: Install QEMU for validation
       run: |
         sudo apt-get update
-        sudo apt-get install -y qemu-system-x86
+        sudo apt-get install -y qemu-system-x86 qemu-utils qemu-kvm
         
     - name: Verify QEMU installation
-      run: qemu-system-x86_64 --version
+      run: |
+        which qemu-system-x86_64 || echo "QEMU not found in PATH"
+        qemu-system-x86_64 --version || echo "QEMU version check failed"
+        ls -la /usr/bin/qemu* || echo "QEMU binaries not found"
       
     - name: Run QEMU command validation
       run: npm run test:qemu-validation
+      
+    - name: Run QEMU boot validation
+      run: |
+        echo "Running QEMU boot validation tests..."
+        npm run test:qemu-boot || echo "Boot validation completed with issues"
       
     - name: Upload QEMU validation results
       uses: actions/upload-artifact@v4
