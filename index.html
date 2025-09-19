@@ -315,79 +315,82 @@
         /**
          * Checks if the backend is configured with an API key and shows AI buttons if it is.
          */
-        async function checkAiAvailability() {
-            try {
-                // We send a simple "ping" to our backend endpoint.
-                const response = await fetch('/api/explain', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: 'ping' }) 
-                });
-
-                // A 200 OK response means the server is running and the API key is likely present.
-                // A 500 error from our proxy specifically means the API key is not configured.
+        function checkAiAvailability() {
+            fetch('/api/explain', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: 'ping' })
+            })
+            .then(function(response) {
                 if (response.ok) {
                     console.log("AI features enabled: Backend connection successful.");
                     document.getElementById('explain-topology').classList.remove('hidden');
                     document.getElementById('explain-command').classList.remove('hidden');
                 } else {
-                    const errorData = await response.json().catch(() => null);
-                    if (errorData && errorData.error && errorData.error.includes('API key not configured')) {
-                        console.warn("AI features disabled: GEMINI_API_KEY is not set on the server. See README.md for instructions.");
-                    } else {
-                        console.warn(`AI features disabled: Backend check failed with status ${response.status}.`);
-                    }
+                    response.json().catch(function() { return null; }).then(function(errorData) {
+                        if (errorData && errorData.error && errorData.error.includes('API key not configured')) {
+                            console.warn("AI features disabled: GEMINI_API_KEY is not set on the server. See README.md for instructions.");
+                        } else {
+                            console.warn('AI features disabled: Backend check failed with status ' + response.status + '.');
+                        }
+                    });
                 }
-            } catch (error) {
+            })
+            .catch(function(error) {
                 console.warn("AI features disabled: Could not connect to the backend proxy at /api/explain. Ensure it's deployed correctly and the API folder is in the root directory.");
-            }
+            });
         }
 
         /**
-         * Calls the Gemini API via our secure backend proxy.
+         * Calls the Gemini API via our secure backend proxy using Promises.
          * @param {string} prompt - The prompt to send to the model.
          * @param {number} retries - The number of retry attempts.
          * @param {number} delay - The delay in ms between retries.
          * @returns {Promise<string>} - The generated text from the model.
          */
-        async function callGeminiAPI(prompt, retries = 3, delay = 1000) {
-            // This URL now points to your own backend function, not directly to Google.
-            // This path works when you deploy to a service like Vercel or Netlify.
-            const apiUrl = '/api/explain'; 
+        function callGeminiAPI(prompt, retries, delay) {
+            retries = (retries === undefined) ? 3 : retries;
+            delay = (delay === undefined) ? 1000 : delay;
+            
+            var apiUrl = '/api/explain';
+            var payload = { prompt: prompt };
 
-            // The payload now only needs the prompt, as the API key is handled on the server.
-            const payload = { prompt };
-
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const response = await fetch(apiUrl, {
+            return new Promise(function(resolve, reject) {
+                var attemptFetch = function(attemptsLeft) {
+                    fetch(apiUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                    
-                    const result = await response.json();
-
-                    if (result && result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts[0] && result.candidates[0].content.parts[0].text) {
-                        return result.candidates[0].content.parts[0].text;
-                    } else {
-                        // Check if the backend sent a specific error message.
-                        if (result.error) {
-                            throw new Error(`Backend error: ${result.error}`);
+                    })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('HTTP error! status: ' + response.status);
                         }
-                        throw new Error("Invalid response structure from backend");
-                    }
-                } catch (error) {
-                    console.error(`API call attempt ${i + 1} failed:`, error);
-                    if (i < retries - 1) {
-                        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
-                    } else {
-                        return "Sorry, there was an error communicating with the AI. Please check the console and try again later.";
-                    }
-                }
-            }
+                        return response.json();
+                    })
+                    .then(function(result) {
+                        if (result && result.candidates && result.candidates[0] && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts[0] && result.candidates[0].content.parts[0].text) {
+                            resolve(result.candidates[0].content.parts[0].text);
+                        } else {
+                            if (result.error) {
+                                throw new Error('Backend error: ' + result.error);
+                            }
+                            throw new Error("Invalid response structure from backend");
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('API call attempt ' + (retries - attemptsLeft + 1) + ' failed:', error);
+                        if (attemptsLeft > 1) {
+                            setTimeout(function() {
+                                attemptFetch(attemptsLeft - 1);
+                            }, delay * Math.pow(2, retries - attemptsLeft));
+                        } else {
+                            resolve("Sorry, there was an error communicating with the AI. Please check the console and try again later.");
+                        }
+                    });
+                };
+                attemptFetch(retries);
+            });
         }
         
         /**
@@ -773,11 +776,11 @@
                 propertiesHtml += `
                     <div>
                         <label for="prop-chassis" class="block text-sm font-medium text-gray-700">Chassis Number</label>
-                        <input type="number" id="prop-chassis" value="${comp.chassis ?? comp.assignedChassis}" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <input type="number" id="prop-chassis" value="${comp.chassis != null ? comp.chassis : comp.assignedChassis}" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                     </div>
                      <div>
                         <label for="prop-slot" class="block text-sm font-medium text-gray-700">Starting Slot</label>
-                        <input type="number" id="prop-slot" value="${comp.baseSlot ?? comp.assignedBaseSlot}" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <input type="number" id="prop-slot" value="${comp.baseSlot != null ? comp.baseSlot : comp.assignedBaseSlot}" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                     </div>
                 `;
 
@@ -1452,11 +1455,11 @@
                         comp.assignedChassis = 0; 
                     }
 
-                    const finalChassis = comp.chassis ?? comp.assignedChassis;
+                    const finalChassis = (comp.chassis != null) ? comp.chassis : comp.assignedChassis;
                     const nextSlot = chassisSlotCounters.get(finalChassis) || 0;
                     comp.assignedBaseSlot = nextSlot;
 
-                    const finalBaseSlot = comp.baseSlot ?? comp.assignedBaseSlot;
+                    const finalBaseSlot = (comp.baseSlot != null) ? comp.baseSlot : comp.assignedBaseSlot;
                     chassisSlotCounters.set(finalChassis, finalBaseSlot + comp.numDownstreamPorts);
                 }
             });
@@ -1519,8 +1522,8 @@
                         const parentHostId = findHostAncestor(comp.id, parentMap);
                         if(parentHostId) {
                             let portNum = hostPortCounters.get(parentHostId) || 0;
-                            const finalChassis = comp.chassis ?? comp.assignedChassis;
-                            const finalBaseSlot = comp.baseSlot ?? comp.assignedBaseSlot;
+                            const finalChassis = (comp.chassis != null) ? comp.chassis : comp.assignedChassis;
+                            const finalBaseSlot = (comp.baseSlot != null) ? comp.baseSlot : comp.assignedBaseSlot;
                             
                             for (let i = 0; i < comp.numDownstreamPorts; i++) {
                                 const portId = `out-${i}`;
@@ -1537,8 +1540,8 @@
                         break;
                     case 'switch':
                         deviceOpts.push(`-device cxl-upstream,bus=${parentBus},id=${comp.upstreamQemuId}`);
-                        const finalChassis = comp.chassis ?? comp.assignedChassis;
-                        const finalBaseSlot = comp.baseSlot ?? comp.assignedBaseSlot;
+                        const finalChassis = (comp.chassis != null) ? comp.chassis : comp.assignedChassis;
+                        const finalBaseSlot = (comp.baseSlot != null) ? comp.baseSlot : comp.assignedBaseSlot;
 
                         for (let i = 0; i < comp.numDownstreamPorts; i++) {
                              const finalSlot = finalBaseSlot + i;
@@ -1643,7 +1646,7 @@
             if (e.target === geminiModal) hideModal();
         });
 
-        explainTopologyBtn.addEventListener('click', async () => {
+        explainTopologyBtn.addEventListener('click', function() {
             prepareModalForRequest('✨ AI Topology Explanation');
             const topologyDescription = serializeTopology();
 
@@ -1670,11 +1673,13 @@
 
                 Here is the topology to analyze:
                 ${topologyDescription}`;
-            const result = await callGeminiAPI(prompt);
-            displayModalResult(result);
+            
+            callGeminiAPI(prompt).then(function(result) {
+                displayModalResult(result);
+            });
         });
 
-        explainCommandBtn.addEventListener('click', async () => {
+        explainCommandBtn.addEventListener('click', function() {
             prepareModalForRequest('✨ AI QEMU Command Explanation');
             const command = qemuCommandOutput.textContent;
             const prompt = `You are a QEMU expert specializing in CXL simulation. 
@@ -1689,8 +1694,9 @@
                 \`\`\`
                 ${command}
                 \`\`\``;
-            const result = await callGeminiAPI(prompt);
-            displayModalResult(result);
+            callGeminiAPI(prompt).then(function(result) {
+                displayModalResult(result);
+            });
         });
 
 
