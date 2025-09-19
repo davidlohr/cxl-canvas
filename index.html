@@ -184,6 +184,7 @@
                         <li>Connect a CXL Root Port to the Host Bridge. Root Ports are the entry points into the CXL fabric.</li>
                         <li>Connect Switches or Devices downstream from Root Ports or other Switches.</li>
                         <li>Every topology requires at least one CXL Memory Window to map device memory to the host.</li>
+                        <li class="mt-2 p-1 bg-yellow-100 text-yellow-800 rounded"><strong>Note:</strong> CXL Type2 Devices are not currently supported by QEMU.</li>
                     </ol>
                 </div>
             </div>
@@ -1172,13 +1173,26 @@
 
         function onCanvasMouseDown(e) {
              if (e.target !== canvas) return;
+
+             // If the user clicks on the empty canvas, and components are selected,
+             // this click should unselect them.
+             if (selectedComponentIds.size > 0) {
+                selectedComponentIds.clear();
+                activeComponentId = null;
+                render();
+                // We stop here. A second click-and-drag is needed to start a new selection.
+                // This is a more predictable UX.
+                return;
+             }
+             
+             // If nothing is selected, then a click-and-drag on the canvas will start a selection box.
              isSelecting = true;
              
              mouseStart.x = e.clientX - canvas.getBoundingClientRect().left;
              mouseStart.y = e.clientY - canvas.getBoundingClientRect().top;
 
-             selectionBox.style.left = `${mouseStart.x}px`;
-             selectionBox.style.top = `${mouseStart.y}px`;
+             selectionBox.style.left = mouseStart.x + 'px';
+             selectionBox.style.top = mouseStart.y + 'px';
              selectionBox.style.width = '0px';
              selectionBox.style.height = '0px';
              selectionBox.classList.remove('hidden');
@@ -1231,7 +1245,7 @@
             } else {
                 activeComponentId = null;
             }
-            renderPropertiesPanel();
+            render();
         }
 
         function onComponentMouseDown (e) {
@@ -1576,6 +1590,7 @@
         }
 
         // --- Event Handlers ---
+        canvas.addEventListener('mousedown', onCanvasMouseDown);
         document.getElementById('add-host').addEventListener('click', () => { createComponent('host', 50, 150); render(); });
         document.getElementById('add-rootport').addEventListener('click', () => { createComponent('rootport', 150, 150); render(); });
         document.getElementById('add-switch').addEventListener('click', () => { createComponent('switch', 200, 200); render(); });
