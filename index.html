@@ -57,10 +57,15 @@
             bottom: -8px;
             left: calc(50% - 8px);
         }
+        #canvas-container {
+             overflow: hidden; /* This is crucial for panning and zooming */
+        }
         #canvas {
             background-color: #f8fafc;
             background-image: radial-gradient(#e2e8f0 1px, transparent 0);
             background-size: 20px 20px;
+            transform-origin: top left; /* This sets the anchor for scaling */
+            transition: transform 0.1s ease-out;
         }
         .component-icon {
             width: 48px;
@@ -99,7 +104,7 @@
              border: 1px solid #e2e8f0;
         }
         #canvas-container {
-            cursor: default;
+            cursor: grab;
         }
         #canvas-container.panning {
             cursor: grabbing;
@@ -117,6 +122,50 @@
         .prose code { background-color: #f1f5f9; color: #4338ca; font-size: 0.875rem; padding: 0.125rem 0.375rem; border-radius: 0.25rem; }
         .prose br { content: ""; display: block; margin-bottom: 0.75rem; }
 
+        /* Custom Toggle Switch Styles */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .toggle-slider {
+            background-color: #4f46e5;
+        }
+        input:focus + .toggle-slider {
+            box-shadow: 0 0 1px #4f46e5;
+        }
+        input:checked + .toggle-slider:before {
+            transform: translateX(16px);
+        }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 flex flex-col h-screen">
@@ -197,10 +246,22 @@
         </div>
 
         <!-- Canvas -->
-        <main id="canvas-container" class="flex-grow p-4 overflow-auto bg-slate-200">
-            <div id="canvas" class="relative rounded-lg shadow-inner">
+        <main id="canvas-container" class="flex-grow p-4 bg-slate-200 relative">
+            <div id="canvas" class="relative">
                 <svg id="connections-svg" class="absolute top-0 left-0" style="pointer-events: none; z-index: 5;"></svg>
                  <div id="selection-box" class="hidden"></div>
+            </div>
+             <!-- Zoom Controls -->
+            <div class="absolute bottom-4 right-4 bg-white rounded-lg shadow-md flex flex-col border border-slate-200">
+                <button id="zoom-in-btn" class="p-2 text-slate-600 hover:bg-slate-100 hover:text-indigo-600 border-b border-slate-200 rounded-t-md transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                </button>
+                <button id="zoom-out-btn" class="p-2 text-slate-600 hover:bg-slate-100 hover:text-indigo-600 border-b border-slate-200 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6"></path></svg>
+                </button>
+                <button id="zoom-reset-btn" class="p-2 text-slate-600 hover:bg-slate-100 hover:text-indigo-600 rounded-b-md transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 9a9 9 0 0114.65-5.65L20 5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 15a9 9 0 01-14.65 5.65L4 19"></path></svg>
+                </button>
             </div>
         </main>
         
@@ -279,6 +340,11 @@
         const togglePropertiesBtn = document.getElementById('toggle-properties-btn');
         const propertiesPanel = document.getElementById('properties-panel');
         
+        // Zoom elements
+        const zoomInBtn = document.getElementById('zoom-in-btn');
+        const zoomOutBtn = document.getElementById('zoom-out-btn');
+        const zoomResetBtn = document.getElementById('zoom-reset-btn');
+
         // Gemini Modal Elements
         const geminiModal = document.getElementById('gemini-modal');
         const modalTitle = document.getElementById('modal-title');
@@ -300,6 +366,12 @@
         let dragStartPositions = new Map();
         let mouseStart = { x: 0, y: 0 };
         let clipboard = [];
+
+        // Zoom and Pan State
+        let zoomLevel = 1;
+        let canvasOffset = { x: 0, y: 0 };
+        let isPanning = false;
+        let panStart = { x: 0, y: 0 };
 
 
         const componentIcons = {
@@ -588,8 +660,8 @@
             });
 
             const padding = 100;
-            const newWidth = Math.max(canvasContainer.clientWidth, maxX + padding);
-            const newHeight = Math.max(canvasContainer.clientHeight, maxY + padding);
+            const newWidth = Math.max(canvasContainer.clientWidth / zoomLevel, maxX + padding);
+            const newHeight = Math.max(canvasContainer.clientHeight / zoomLevel, maxY + padding);
 
             canvas.style.width = `${newWidth}px`;
             canvas.style.height = `${newHeight}px`;
@@ -681,20 +753,36 @@
         }
 
         function renderConnections() {
-            const canvasRect = canvas.getBoundingClientRect();
-            connections.forEach(conn => {
-                const line = document.getElementById(getConnectionLineId(conn));
-                const sourceEl = document.querySelector(`.port[data-component-id="${conn.source.componentId}"][data-port-id="${conn.source.portId}"]`);
-                const targetEl = document.querySelector(`.port[data-component-id="${conn.target.componentId}"][data-port-id="${conn.target.portId}"]`);
+            // This function calculates line positions based on the component's internal
+            // x/y coordinates, NOT their on-screen position (getBoundingClientRect).
+            // This is crucial because the entire canvas (including the SVG) is scaled
+            // and translated for zooming and panning. By using the model's coordinates,
+            // the lines are drawn in the correct relative positions, and the browser's
+            // CSS transform handles the zoom/pan for the SVG as a whole.
+            connections.forEach(function(conn) {
+                var line = document.getElementById(getConnectionLineId(conn));
+                var sourceComp = components.find(function(c) { return c.id === conn.source.componentId; });
+                var targetComp = components.find(function(c) { return c.id === conn.target.componentId; });
 
-                if (line && sourceEl && targetEl) {
-                    const sourceRect = sourceEl.getBoundingClientRect();
-                    const targetRect = targetEl.getBoundingClientRect();
+                if (line && sourceComp && targetComp) {
+                    var sourcePort = sourceComp.ports.find(function(p) { return p.id === conn.source.portId; });
+                    var targetPort = targetComp.ports.find(function(p) { return p.id === conn.target.portId; });
+
+                    if (!sourcePort || !targetPort) return;
                     
-                    const x1 = sourceRect.left - canvasRect.left + sourceRect.width / 2;
-                    const y1 = sourceRect.top - canvasRect.top + sourceRect.height / 2;
-                    const x2 = targetRect.left - canvasRect.left + targetRect.width / 2;
-                    const y2 = targetRect.top - canvasRect.top + targetRect.height / 2;
+                    var componentWidth = 144;
+                    var componentHeight = 144;
+
+                    // Calculate source port coordinates (always a downstream port)
+                    var downstreamPorts = sourceComp.ports.filter(function(p) { return p.type === 'downstream'; });
+                    var portIndex = downstreamPorts.findIndex(function(p) { return p.id === sourcePort.id; });
+                    
+                    var x1 = sourceComp.x + (componentWidth / (downstreamPorts.length + 1)) * (portIndex + 1);
+                    var y1 = sourceComp.y + componentHeight;
+
+                    // Calculate target port coordinates (always an upstream port)
+                    var x2 = targetComp.x + componentWidth / 2;
+                    var y2 = targetComp.y;
 
                     line.setAttribute('x1', x1);
                     line.setAttribute('y1', y1);
@@ -720,79 +808,84 @@
             performSmartAssignment();
 
             let propertiesHtml = `<h2 class="text-lg font-semibold text-slate-900 border-b pb-2">${comp.name}</h2><div class="space-y-4 mt-4">`;
+            
             if (comp.type === 'device') {
                 const isDCD = comp.isDCD;
                 const isPersistent = comp.memoryType === 'persistent';
                 propertiesHtml += `
-                    <div>
-                        <label for="prop-size" class="block text-sm font-medium text-gray-700">Size</label>
-                        <input type="text" id="prop-size" value="${comp.size}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                    </div>
-                    <div class="relative flex items-start">
-                        <div class="flex h-5 items-center">
-                            <input id="prop-dcd" type="checkbox" ${isDCD ? 'checked' : ''} class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="prop-size" class="block text-sm font-medium text-slate-700">Size</label>
+                            <input type="text" id="prop-size" value="${comp.size}" class="mt-1 bg-slate-50 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                         </div>
-                        <div class="ml-3 text-sm">
-                            <label for="prop-dcd" class="font-medium text-gray-700">Dynamic Capacity Device (DCD)</label>
+                        <div class="bg-slate-50 p-3 rounded-lg space-y-3">
+                             <div class="flex justify-between items-center">
+                                <label for="prop-dcd" class="font-medium text-slate-700 text-sm">Dynamic Capacity (DCD)</label>
+                                <label class="toggle-switch">
+                                    <input id="prop-dcd" type="checkbox" ${isDCD ? 'checked' : ''}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div id="dc-regions-wrapper" class="${!isDCD ? 'hidden' : ''}">
+                                <label for="prop-dc-regions" class="block text-sm font-medium text-slate-700">DC Regions</label>
+                                <input type="number" id="prop-dc-regions" value="${comp.numDcRegions}" min="1" max="8" class="mt-1 bg-white block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            </div>
+                            <div>
+                                <label for="prop-mem-type" class="block text-sm font-medium ${isDCD ? 'text-slate-400' : 'text-slate-700'}">Memory Type</label>
+                                <select id="prop-mem-type" class="mt-1 bg-white block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${isDCD ? 'bg-slate-100 cursor-not-allowed' : ''}" ${isDCD ? 'disabled' : ''}>
+                                    <option value="volatile" ${comp.memoryType === 'volatile' ? 'selected' : ''}>Volatile</option>
+                                    <option value="persistent" ${isPersistent ? 'selected' : ''}>Persistent</option>
+                                </select>
+                            </div>
+                            <div id="lsa-size-wrapper" class="${(isDCD || !isPersistent) ? 'hidden' : ''}">
+                                <label for="prop-lsa-size" class="block text-sm font-medium text-slate-700">LSA Size</label>
+                                <input type="text" id="prop-lsa-size" value="${comp.lsaSize}" class="mt-1 bg-white block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            </div>
                         </div>
-                    </div>
-                     <div id="dc-regions-wrapper" class="${!isDCD ? 'hidden' : ''}">
-                        <label for="prop-dc-regions" class="block text-sm font-medium text-gray-700">DC Regions</label>
-                        <input type="number" id="prop-dc-regions" value="${comp.numDcRegions}" min="1" max="8" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                    </div>
-                    <div>
-                        <label for="prop-mem-type" class="block text-sm font-medium ${isDCD ? 'text-gray-400' : 'text-gray-700'}">Memory Type</label>
-                        <select id="prop-mem-type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${isDCD ? 'bg-gray-50 cursor-not-allowed' : ''}" ${isDCD ? 'disabled' : ''}>
-                            <option value="volatile" ${comp.memoryType === 'volatile' ? 'selected' : ''}>Volatile</option>
-                            <option value="persistent" ${isPersistent ? 'selected' : ''}>Persistent</option>
-                        </select>
-                    </div>
-                    <div id="lsa-size-wrapper" class="${(isDCD || !isPersistent) ? 'hidden' : ''}">
-                        <label for="prop-lsa-size" class="block text-sm font-medium text-gray-700">LSA Size</label>
-                        <input type="text" id="prop-lsa-size" value="${comp.lsaSize}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                    </div>
-                     <div>
-                        <label for="prop-sn" class="block text-sm font-medium text-gray-700">Serial Number (Hex)</label>
-                        <input type="text" id="prop-sn" value="${comp.sn}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <div>
+                            <label for="prop-sn" class="block text-sm font-medium text-slate-700">Serial Number (Hex)</label>
+                            <input type="text" id="prop-sn" value="${comp.sn}" class="mt-1 bg-slate-50 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        </div>
                     </div>
                 `;
             } else if (comp.type === 'device-t2') {
                 propertiesHtml += `
-                    <div>
-                        <label for="prop-size" class="block text-sm font-medium text-gray-700">Memory Size</label>
-                        <input type="text" id="prop-size" value="${comp.size}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                     <div>
+                        <label for="prop-size" class="block text-sm font-medium text-slate-700">Memory Size</label>
+                        <input type="text" id="prop-size" value="${comp.size}" class="mt-1 bg-slate-50 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                     </div>
                     <div>
-                        <label for="prop-sn" class="block text-sm font-medium text-gray-700">Serial Number (Hex)</label>
-                        <input type="text" id="prop-sn" value="${comp.sn}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <label for="prop-sn" class="block text-sm font-medium text-slate-700">Serial Number (Hex)</label>
+                        <input type="text" id="prop-sn" value="${comp.sn}" class="mt-1 bg-slate-50 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                     </div>
                 `;
             } else if (comp.type === 'switch' || comp.type === 'rootport') {
                 if (comp.type === 'switch') {
-                     propertiesHtml += `<div><label for="prop-ports" class="block text-sm font-medium text-gray-700">Downstream Ports</label><input type="number" id="prop-ports" value="${comp.numDownstreamPorts}" min="1" max="16" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></div>`;
+                     propertiesHtml += `<div><label for="prop-ports" class="block text-sm font-medium text-slate-700">Downstream Ports</label><input type="number" id="prop-ports" value="${comp.numDownstreamPorts}" min="1" max="16" class="mt-1 bg-slate-50 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></div>`;
                 } else { // rootport
-                    propertiesHtml += `<div><label for="prop-rp-ports" class="block text-sm font-medium text-gray-700">Downstream Ports</label><input type="number" id="prop-rp-ports" value="${comp.numDownstreamPorts}" min="1" max="16" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></div>`;
+                    propertiesHtml += `<div><label for="prop-rp-ports" class="block text-sm font-medium text-slate-700">Downstream Ports</label><input type="number" id="prop-rp-ports" value="${comp.numDownstreamPorts}" min="1" max="16" class="mt-1 bg-slate-50 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></div>`;
                 }
                 
                 propertiesHtml += `
-                    <div>
-                        <label for="prop-chassis" class="block text-sm font-medium text-gray-700">Chassis Number</label>
-                        <input type="number" id="prop-chassis" value="${comp.chassis != null ? comp.chassis : comp.assignedChassis}" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                    </div>
-                     <div>
-                        <label for="prop-slot" class="block text-sm font-medium text-gray-700">Starting Slot</label>
-                        <input type="number" id="prop-slot" value="${comp.baseSlot != null ? comp.baseSlot : comp.assignedBaseSlot}" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    <div class="bg-slate-50 p-3 rounded-lg space-y-3">
+                        <div>
+                            <label for="prop-chassis" class="block text-sm font-medium text-slate-700">Chassis Number</label>
+                            <input type="number" id="prop-chassis" value="${comp.chassis != null ? comp.chassis : comp.assignedChassis}" min="0" class="mt-1 bg-white block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        </div>
+                         <div>
+                            <label for="prop-slot" class="block text-sm font-medium text-slate-700">Starting Slot</label>
+                            <input type="number" id="prop-slot" value="${comp.baseSlot != null ? comp.baseSlot : comp.assignedBaseSlot}" min="0" class="mt-1 bg-white block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        </div>
                     </div>
                 `;
 
                 if (comp.type === 'switch') {
-                    propertiesHtml += `<div class="relative flex items-start pt-2">
-                        <div class="flex h-5 items-center">
-                            <input id="prop-cci" type="checkbox" ${comp.hasCCI ? 'checked' : ''} class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                        </div>
-                        <div class="ml-3 text-sm">
-                            <label for="prop-cci" class="font-medium text-gray-700">Enable CCI Mailbox</label>
-                        </div>
+                    propertiesHtml += `<div class="bg-slate-50 p-3 rounded-lg flex justify-between items-center">
+                        <label for="prop-cci" class="font-medium text-slate-700 text-sm">CCI Mailbox</label>
+                        <label class="toggle-switch">
+                           <input id="prop-cci" type="checkbox" ${comp.hasCCI ? 'checked' : ''}>
+                           <span class="toggle-slider"></span>
+                        </label>
                     </div>`;
                 }
             } else if (comp.type === 'window') {
@@ -802,28 +895,28 @@
                     granularityOptions += `<option value="${value}" ${comp.interleaveGranularity === value ? 'selected' : ''}>${label}</option>`;
                 }
 
-                propertiesHtml += `<div><label for="prop-size" class="block text-sm font-medium text-gray-700">Window Size</label><input type="text" id="prop-size" value="${comp.size}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></div>`;
+                propertiesHtml += `<div><label for="prop-size" class="block text-sm font-medium text-slate-700">Window Size</label><input type="text" id="prop-size" value="${comp.size}" class="mt-1 bg-slate-50 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></div>`;
                 
                 propertiesHtml += `<div>
-                        <label for="prop-granularity" class="block text-sm font-medium text-gray-700">Interleave Granularity</label>
-                        <select id="prop-granularity" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">${granularityOptions}</select>
+                        <label for="prop-granularity" class="block text-sm font-medium text-slate-700">Interleave Granularity</label>
+                        <select id="prop-granularity" class="mt-1 bg-slate-50 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">${granularityOptions}</select>
                     </div>`;
 
-                propertiesHtml += `<div><label class="block text-sm font-medium text-gray-700">Associated Host Bridges</label><div id="host-checkboxes" class="mt-2 space-y-2">${components.filter(c => c.type === 'host').map(h => `<div class="flex items-center"><input id="host-check-${h.id}" data-host-id="${h.id}" type="checkbox" ${comp.hostBridgeIds.includes(h.id) ? 'checked' : ''} class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"><label for="host-check-${h.id}" class="ml-2 block text-sm text-gray-900">${h.name} (${h.qemuId})</label></div>`).join('') || '<p class="text-xs text-slate-500">No host bridges on canvas.</p>'}</div></div>`;
+                propertiesHtml += `<div class="bg-slate-50 p-3 rounded-lg"><label class="block text-sm font-medium text-slate-700 mb-2">Associated Host Bridges</label><div id="host-checkboxes" class="space-y-2">${components.filter(c => c.type === 'host').map(h => `<div class="flex items-center"><input id="host-check-${h.id}" data-host-id="${h.id}" type="checkbox" ${comp.hostBridgeIds.includes(h.id) ? 'checked' : ''} class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"><label for="host-check-${h.id}" class="ml-2 block text-sm text-gray-900">${h.name} (${h.qemuId})</label></div>`).join('') || '<p class="text-xs text-slate-500">No host bridges on canvas.</p>'}</div></div>`;
             } else if(comp.type === 'host'){
                  propertiesHtml += `
                     <div>
-                        <label for="prop-bus_nr" class="block text-sm font-medium text-gray-700">Bus Number</label>
-                        <input type="number" id="prop-bus_nr" value="${comp.bus_nr}" min="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <label for="prop-bus_nr" class="block text-sm font-medium text-slate-700">Bus Number</label>
+                        <input type="number" id="prop-bus_nr" value="${comp.bus_nr}" min="0" class="mt-1 bg-slate-50 block w-full rounded-md border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                     </div>
                 `;
             }
             else {
                 propertiesHtml += `<p class="text-sm text-slate-500">No editable properties for this component.</p>`;
             }
-            propertiesHtml += `</div><div class="mt-6 pt-4 border-t space-y-2"><button id="update-component" class="w-full bg-indigo-600 text-white text-sm font-medium py-1 px-3 rounded-lg shadow-sm hover:bg-indigo-700">Update</button>`;
+            propertiesHtml += `</div><div class="mt-6 pt-4 border-t space-y-2"><button id="update-component" class="w-full bg-indigo-600 text-white text-sm font-medium py-2 px-3 rounded-lg shadow-sm hover:bg-indigo-700">Update</button>`;
             if (comp.isDeletable) {
-                propertiesHtml += `<button id="delete-component" class="w-full bg-white text-red-600 border border-red-300 text-sm font-medium py-1 px-3 rounded-lg shadow-sm hover:bg-red-50">Delete Component</button>`;
+                propertiesHtml += `<button id="delete-component" class="w-full bg-white text-red-600 border border-red-300 text-sm font-medium py-2 px-3 rounded-lg shadow-sm hover:bg-red-50">Delete</button>`;
             }
             propertiesHtml += `</div>`;
             
@@ -836,10 +929,11 @@
             
             const dcdCheckbox = document.getElementById('prop-dcd');
             const memTypeSelect = document.getElementById('prop-mem-type');
-            if (dcdCheckbox) {
+            if (dcdCheckbox && memTypeSelect) {
                 const lsaWrapper = document.getElementById('lsa-size-wrapper');
                 const dcRegionsWrapper = document.getElementById('dc-regions-wrapper');
-                const updateDeviceOptions = (event) => {
+                
+                const updateDeviceOptions = function(event) {
                     const changedElement = event.currentTarget;
 
                     if (changedElement.id === 'prop-dcd') {
@@ -863,39 +957,20 @@
                     const isDCD = dcdCheckbox.checked;
                     const isPersistent = memTypeSelect.value === 'persistent';
                     
-                    memTypeSelect.classList.toggle('bg-gray-50', isDCD);
+                    memTypeSelect.classList.toggle('bg-slate-100', isDCD);
                     memTypeSelect.classList.toggle('cursor-not-allowed', isDCD);
-                    memTypeSelect.previousElementSibling.classList.toggle('text-gray-400', isDCD);
+                    memTypeSelect.previousElementSibling.classList.toggle('text-slate-400', isDCD);
                     
-                    dcdCheckbox.classList.toggle('cursor-not-allowed', isPersistent);
-                    document.querySelector('label[for="prop-dcd"]').classList.toggle('text-gray-400', isPersistent);
+                    dcdCheckbox.disabled = isPersistent;
+                    dcdCheckbox.closest('.flex').querySelector('label').classList.toggle('text-slate-400', isPersistent);
+
                     
-                    dcRegionsWrapper.classList.toggle('hidden', !isDCD);
-                    lsaWrapper.classList.toggle('hidden', isDCD || !isPersistent);
+                    if(dcRegionsWrapper) dcRegionsWrapper.classList.toggle('hidden', !isDCD);
+                    if(lsaWrapper) lsaWrapper.classList.toggle('hidden', isDCD || !isPersistent);
                 };
 
                 dcdCheckbox.addEventListener('change', updateDeviceOptions);
                 memTypeSelect.addEventListener('change', updateDeviceOptions);
-
-                // Initial UI state setup
-                if (comp.isDCD) {
-                     memTypeSelect.value = 'volatile';
-                     memTypeSelect.disabled = true;
-                } else if (comp.memoryType === 'persistent') {
-                     dcdCheckbox.disabled = true;
-                }
-                
-                // Manually trigger updates to set correct initial state for wrappers
-                const isDCD = dcdCheckbox.checked;
-                const isPersistent = memTypeSelect.value === 'persistent';
-                document.getElementById('dc-regions-wrapper').classList.toggle('hidden', !isDCD);
-                document.getElementById('lsa-size-wrapper').classList.toggle('hidden', isDCD || !isPersistent);
-                memTypeSelect.classList.toggle('bg-gray-50', isDCD);
-                memTypeSelect.classList.toggle('cursor-not-allowed', isDCD);
-                memTypeSelect.previousElementSibling.classList.toggle('text-gray-400', isDCD);
-                dcdCheckbox.classList.toggle('cursor-not-allowed', isPersistent);
-                document.querySelector('label[for="prop-dcd"]').classList.toggle('text-gray-400', isPersistent);
-
             }
         }
         
@@ -1172,11 +1247,11 @@
         }
 
         function onCanvasMouseDown(e) {
-             if (e.target !== canvas) return;
+             if (e.target !== canvas && e.target !== canvasContainer) return;
 
              // If the user clicks on the empty canvas, and components are selected,
              // this click should unselect them.
-             if (selectedComponentIds.size > 0) {
+             if (selectedComponentIds.size > 0 && !e.shiftKey) {
                 selectedComponentIds.clear();
                 activeComponentId = null;
                 render();
@@ -1188,8 +1263,9 @@
              // If nothing is selected, then a click-and-drag on the canvas will start a selection box.
              isSelecting = true;
              
-             mouseStart.x = e.clientX - canvas.getBoundingClientRect().left;
-             mouseStart.y = e.clientY - canvas.getBoundingClientRect().top;
+             const correctedPos = getMousePosition(e);
+             mouseStart.x = correctedPos.x;
+             mouseStart.y = correctedPos.y;
 
              selectionBox.style.left = mouseStart.x + 'px';
              selectionBox.style.top = mouseStart.y + 'px';
@@ -1204,9 +1280,10 @@
         function onCanvasMouseMove(e) {
             if (!isSelecting) return;
 
-            const canvasRect = canvas.getBoundingClientRect();
-            const currentX = e.clientX - canvasRect.left;
-            const currentY = e.clientY - canvasRect.top;
+            const correctedPos = getMousePosition(e);
+            const currentX = correctedPos.x;
+            const currentY = correctedPos.y;
+
 
             const left = Math.min(mouseStart.x, currentX);
             const top = Math.min(mouseStart.y, currentY);
@@ -1279,8 +1356,8 @@
         function onComponentMouseMove(e) {
             if (!isDraggingComponent) return;
 
-            const dx = e.clientX - mouseStart.x;
-            const dy = e.clientY - mouseStart.y;
+            const dx = (e.clientX - mouseStart.x) / zoomLevel;
+            const dy = (e.clientY - mouseStart.y) / zoomLevel;
 
             selectedComponentIds.forEach(id => {
                 const compData = components.find(c => c.id === id);
@@ -1589,6 +1666,61 @@
             qemuCommandOutput.textContent = finalCommand;
         }
 
+        // --- Zoom and Pan Functions ---
+        function updateCanvasTransform() {
+            canvas.style.transform = `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${zoomLevel})`;
+            renderConnections();
+        }
+
+        function getMousePosition(e) {
+            const containerRect = canvasContainer.getBoundingClientRect();
+            const mouseX = e.clientX - containerRect.left;
+            const mouseY = e.clientY - containerRect.top;
+            const canvasX = (mouseX - canvasOffset.x) / zoomLevel;
+            const canvasY = (mouseY - canvasOffset.y) / zoomLevel;
+            return { x: canvasX, y: canvasY };
+        }
+
+        zoomInBtn.addEventListener('click', function() {
+            zoomLevel = Math.min(2, zoomLevel + 0.1);
+            updateCanvasTransform();
+        });
+
+        zoomOutBtn.addEventListener('click', function() {
+            zoomLevel = Math.max(0.25, zoomLevel - 0.1);
+            updateCanvasTransform();
+        });
+
+        zoomResetBtn.addEventListener('click', function() {
+            zoomLevel = 1;
+            canvasOffset = { x: 0, y: 0 };
+            updateCanvasTransform();
+        });
+
+        canvasContainer.addEventListener('mousedown', function(e) {
+            // Pan with middle mouse button or by holding spacebar
+            if (e.button === 1 || (e.button === 0 && e.target === canvasContainer)) {
+                isPanning = true;
+                canvasContainer.classList.add('panning');
+                panStart.x = e.clientX - canvasOffset.x;
+                panStart.y = e.clientY - canvasOffset.y;
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('mousemove', function(e) {
+            if (isPanning) {
+                canvasOffset.x = e.clientX - panStart.x;
+                canvasOffset.y = e.clientY - panStart.y;
+                updateCanvasTransform();
+            }
+        });
+
+        document.addEventListener('mouseup', function(e) {
+            isPanning = false;
+            canvasContainer.classList.remove('panning');
+        });
+
         // --- Event Handlers ---
         canvas.addEventListener('mousedown', onCanvasMouseDown);
         document.getElementById('add-host').addEventListener('click', () => { createComponent('host', 50, 150); render(); });
@@ -1723,3 +1855,5 @@
     </script>
 </body>
 </html>
+
+
