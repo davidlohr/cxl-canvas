@@ -191,13 +191,13 @@
                         <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line></svg>
                         <span class="text-xs font-medium">Host Bridge</span>
                     </button>
-                    <button id="add-rootport" class="flex flex-col items-center justify-center p-2 space-y-1 rounded-lg bg-slate-50 hover:bg-purple-100 text-slate-700 hover:text-purple-700 transition-colors duration-200 border border-slate-200 hover:border-purple-300">
-                        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="14" width="18" height="6" rx="2"></rect><line x1="8" y1="14" x2="8" y2="10"></line><line x1="16" y1="14" x2="16" y2="10"></line></svg>
-                        <span class="text-xs font-medium">Root Port</span>
-                    </button>
                     <button id="add-switch" class="flex flex-col items-center justify-center p-2 space-y-1 rounded-lg bg-slate-50 hover:bg-sky-100 text-slate-700 hover:text-sky-700 transition-colors duration-200 border border-slate-200 hover:border-sky-300">
                         <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"></path><path d="M12 10v4"></path><path d="M12 18v4"></path><path d="M12 6h8v4h-8z"></path><path d="M12 14h-8v4h8z"></path></svg>
                         <span class="text-xs font-medium">Switch</span>
+                    </button>
+                    <button id="add-rootport" class="flex flex-col items-center justify-center p-2 space-y-1 rounded-lg bg-slate-50 hover:bg-purple-100 text-slate-700 hover:text-purple-700 transition-colors duration-200 border border-slate-200 hover:border-purple-300">
+                        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="14" width="18" height="6" rx="2"></rect><line x1="8" y1="14" x2="8" y2="10"></line><line x1="16" y1="14" x2="16" y2="10"></line></svg>
+                        <span class="text-xs font-medium">Root Port</span>
                     </button>
                     <button id="add-device-t2" class="flex flex-col items-center justify-center p-2 space-y-1 rounded-lg bg-slate-50 hover:bg-orange-100 text-slate-700 hover:text-orange-700 transition-colors duration-200 border border-slate-200 hover:border-orange-300">
                        <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="6" y1="8" x2="6" y2="16"></line><line x1="10" y1="8" x2="10" y2="16"></line><rect x="14" y="8" width="4" height="4" rx="1"></rect></svg>
@@ -228,11 +228,11 @@
                 </div>
                 <div class="pt-4 text-xs text-slate-500">
                     <h3 class="font-semibold mb-2">Instructions:</h3>
-                    <ol id="instructions-list" class="list-decimal list-inside space-y-1">
-                        <li id="instr-step-1">Start with a CXL Host Bridge.</li>
-                        <li id="instr-step-2">Connect a CXL Root Port to the Host Bridge.</li>
-                        <li id="instr-step-3">Connect Switches or Devices downstream.</li>
-                        <li id="instr-step-4">Add a CXL Memory Window.</li>
+                    <ol class="list-decimal list-inside space-y-1">
+                        <li>Start with a CXL Host Bridge. This is the root of any CXL topology.</li>
+                        <li>Connect a CXL Root Port to the Host Bridge. Root Ports are the entry points into the CXL fabric.</li>
+                        <li>Connect Switches or Devices downstream from Root Ports or other Switches.</li>
+                        <li>Every topology requires at least one CXL Memory Window to map device memory to the host.</li>
                         <li class="mt-2 p-1 bg-yellow-100 text-yellow-800 rounded"><strong>Note:</strong> CXL Type2 Devices are not currently supported by QEMU.</li>
                     </ol>
                 </div>
@@ -366,7 +366,6 @@
         let dragStartPositions = new Map();
         let mouseStart = { x: 0, y: 0 };
         let clipboard = [];
-        let instructionTexts = [];
 
         // Zoom and Pan State
         let zoomLevel = 1;
@@ -751,7 +750,6 @@
             if(document.getElementById('properties-content') && !propertiesPanel.classList.contains('collapsed')) { // only render properties if panel is open
                 renderPropertiesPanel();
             }
-             validateTopologyAndStyleInstructions();
         }
 
         function renderConnections() {
@@ -1668,51 +1666,6 @@
             qemuCommandOutput.textContent = finalCommand;
         }
 
-        function validateTopologyAndStyleInstructions() {
-            const steps = [
-                document.getElementById('instr-step-1'),
-                document.getElementById('instr-step-2'),
-                document.getElementById('instr-step-3'),
-                document.getElementById('instr-step-4')
-            ];
-
-            // Helper to apply styles
-            const applyStyle = function(element, isValid, originalText) {
-                if (isValid) {
-                    element.classList.remove('text-red-600');
-                    element.classList.add('text-green-600');
-                    element.innerHTML = `<span class="font-bold">✔</span> ${originalText}`;
-                } else {
-                    element.classList.remove('text-green-600');
-                    element.classList.add('text-red-600');
-                    element.innerHTML = `<span class="font-bold">❌</span> ${originalText}`;
-                }
-            };
-            
-            // Validation Logic
-            const hasHost = components.some(c => c.type === 'host');
-            applyStyle(steps[0], hasHost, instructionTexts[0]);
-
-            const hasRpConnectedToHost = connections.some(c => {
-                const source = components.find(s => s.id === c.source.componentId);
-                const target = components.find(t => t.id === c.target.componentId);
-                return source && target && source.type === 'host' && target.type === 'rootport';
-            });
-            applyStyle(steps[1], hasRpConnectedToHost, instructionTexts[1]);
-
-            const hasDownstreamFromRpOrSwitch = connections.some(c => {
-                const source = components.find(s => s.id === c.source.componentId);
-                const target = components.find(t => t.id === c.target.componentId);
-                const sourceIsRpOrSwitch = source && (source.type === 'rootport' || source.type === 'switch');
-                const targetIsDeviceOrSwitch = target && (target.type === 'switch' || target.type === 'device' || target.type === 'device-t2');
-                return sourceIsRpOrSwitch && targetIsDeviceOrSwitch;
-            });
-            applyStyle(steps[2], hasDownstreamFromRpOrSwitch, instructionTexts[2]);
-            
-            const hasWindow = components.some(c => c.type === 'window');
-            applyStyle(steps[3], hasWindow, instructionTexts[3]);
-        }
-
         // --- Zoom and Pan Functions ---
         function updateCanvasTransform() {
             canvas.style.transform = `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${zoomLevel})`;
@@ -1745,8 +1698,8 @@
         });
 
         canvasContainer.addEventListener('mousedown', function(e) {
-            // Pan with middle mouse button or by holding spacebar and left-clicking
-            if (e.button === 1 || (e.button === 0 && (e.target === canvasContainer || e.target === canvas))) {
+            // Pan with middle mouse button or by holding spacebar
+            if (e.button === 1 || (e.button === 0 && e.target === canvasContainer)) {
                 isPanning = true;
                 canvasContainer.classList.add('panning');
                 panStart.x = e.clientX - canvasOffset.x;
@@ -1876,7 +1829,7 @@
         explainCommandBtn.addEventListener('click', function() {
             prepareModalForRequest('✨ AI QEMU Command Explanation');
             const command = qemuCommandOutput.textContent;
-            const prompt = `You are a QEMU expert specializing in CXL simulation. 
+            const prompt = `You are a QEMU expert specializing in CXL simulation. /*  */
                 Your task is to explain the provided QEMU command. 
                 - Break down the command line, explaining each significant flag and device/object definition.
                 - Explain how the arguments relate to each other to form the complete CXL topology.
@@ -1895,10 +1848,6 @@
 
 
         // --- Initial state ---
-        const instructionElements = document.querySelectorAll('#instructions-list li[id]');
-        instructionElements.forEach(function(el) {
-            instructionTexts.push(el.textContent);
-        });
         resetCanvas();
         checkAiAvailability();
 
