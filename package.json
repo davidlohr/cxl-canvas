@@ -1,0 +1,22 @@
+{
+  "name": "cxl-canvas-tests",
+  "version": "1.0.0",
+  "description": "Automated testing for CXL topology QEMU command generation",
+  "scripts": {
+    "test:browser-compat": "node tests/browser-compatibility-test.js",
+    "lint": "node tests/js-compatibility-check.js",
+    "serve": "node tests/test-server.js"
+  },
+  "devDependencies": {
+    "@html-eslint/eslint-plugin": "^0.46.2",
+    "@html-eslint/parser": "^0.46.2",
+    "browserslist": "^4.26.2",
+    "eslint": "^9.35.0",
+    "eslint-plugin-compat": "^6.0.2",
+    "nodemon": "^3.0.0",
+    "puppeteer": "^24.10.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
