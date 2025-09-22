@@ -528,7 +528,13 @@
 
             // Sanitize the content to remove any script tags to prevent XSS attacks.
             // This regex handles optional whitespace in the closing tag, addressing the reported vulnerability.
-            const sanitizedContent = content.replace(/<script[^>]*>([\s\S]*?)<\/script\s*>/gi, '');
+            let sanitizedContent = content;
+            let prevContent;
+            // Repeat removal until nothing changes to handle nested/multiple script tags.
+            do {
+                prevContent = sanitizedContent;
+                sanitizedContent = sanitizedContent.replace(/<script[^>]*>([\s\S]*?)<\/script\s*>/gi, '');
+            } while (sanitizedContent !== prevContent);
 
             let htmlContent = sanitizedContent
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
