@@ -525,12 +525,7 @@
 
         const displayModalResult = (content) => {
             modalLoader.style.display = 'none';
-
-            // Sanitize the content to remove any script tags to prevent XSS attacks.
-            // This regex handles optional whitespace in the closing tag, addressing the reported vulnerability.
-            const sanitizedContent = content.replace(/<script[^>]*>([\s\S]*?)<\/script\s*>/gi, '');
-
-            let htmlContent = sanitizedContent
+            let htmlContent = content
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                 .replace(/`([^`]+)`/g, '<code>$1</code>')
                 .replace(/^- (.*$)/gm, '<li>$1</li>')
@@ -1860,4 +1855,3 @@
     </script>
 </body>
 </html>
-
